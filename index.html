@@ -333,8 +333,8 @@ function renderLeaderboard() {
   `;
 
   bestRuns.forEach((r, i) => {
-    const mIcon = monsterIcons[r.monster] || '';
-    const wIcon = weaponIcons[r.weapon] || '';
+const mIcon = monsterIcons[r.monster?.trim().toLowerCase()] || '';
+const wIcon = weaponIcons[r.weapon?.trim().toLowerCase()] || '';
 
     html += `
       <tr>
