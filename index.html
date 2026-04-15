@@ -511,67 +511,63 @@ function formatTime(secs) {
 
 async function loadData() {
   const content = document.getElementById('mainContent');
+  document.getElementById('lastUpdated').textContent = 'Syncing...';
+
   try {
     const rows = await fetchJSON();
-    if (!rows || rows.length === 0) throw new Error("No data found in sheet.");
+    if (!rows || rows.length === 0) throw new Error("No data found");
 
-    // 1. Find the Header Row and Map Columns
+    // 1. AUTO-DETECT COLUMNS
+    // We look at the very first row to find where your data is
     const headerRow = rows[0].c;
-    const colMap = {};
+    let colMap = { variant: 0, tier: 1, icon: 2, player: 4, total: 13 }; // Default fallbacks
+
     headerRow.forEach((cell, i) => {
-      const val = (cell?.v || '').toString().toLowerCase();
-      if (val.includes('variant')) colMap.variant = i;
-      if (val.includes('tier')) colMap.tier = i;
-      if (val.includes('icon')) colMap.icon = i;
-      if (val.includes('player')) colMap.player = i;
-      if (val.includes('total')) colMap.total = i;
+      const label = (cell?.v || cell?.f || '').toString().toLowerCase();
+      if (label.includes('variant')) colMap.variant = i;
+      if (label.includes('tier')) colMap.tier = i;
+      if (label.includes('icon')) colMap.icon = i;
+      if (label.includes('player')) colMap.player = i;
+      if (label.includes('total') || label.includes('grand')) colMap.total = i;
     });
 
-    console.log("Detected Columns:", colMap); // See this in F12 console
+    console.log("Found Columns at:", colMap); // View this in F12 Console
 
     allRuns = [];
-    // 2. Process data starting from row 1 (after headers)
+    // 2. PARSE DATA (Starting from row 1, skipping headers)
     for (let i = 1; i < rows.length; i++) {
       const cells = rows[i].c;
       if (!cells) continue;
 
-      const player = cells[colMap.player]?.v || cells[colMap.player]?.f;
-      if (!player) continue;
+      const playerName = cells[colMap.player]?.v || cells[colMap.player]?.f;
+      if (!playerName) continue;
+
+      // Google JSON often stores time strings in '.f' (formatted) 
+      // and raw numbers in '.v'. We check both.
+      const rawTime = cells[colMap.total]?.f || cells[colMap.total]?.v || '';
 
       allRuns.push({
         variant: cells[colMap.variant]?.v || cells[colMap.variant]?.f || 'Base',
         tier: cells[colMap.tier]?.v || cells[colMap.tier]?.f || '',
         icon: cells[colMap.icon]?.v || cells[colMap.icon]?.f || '',
-        player: player.trim(),
-        bestTime: parseTime(cells[colMap.total]?.f || cells[colMap.total]?.v)
+        player: playerName.toString().trim(),
+        bestTime: parseTime(rawTime.toString())
       });
     }
 
-    // 3. Pairing Logic
+    // 3. GROUP BY HUNT (Jeremy vs Matt)
     const paired = {};
     allRuns.forEach(run => {
       const key = `${run.variant}-${run.tier}-${run.icon}`;
       if (!paired[key]) {
         paired[key] = { 
-          monsterName: `${run.variant} ${run.tier}`.trim(), 
+          monsterName: `${run.variant} ${run.tier}`.trim() || "Unknown Hunt", 
           icon: run.icon, 
           variant: run.variant 
         };
       }
-      if (run.player === 'Jeremy') paired[key].jeremy = run;
-      if (run.player === 'Matt') paired[key].matt = run;
-    });
-
-    window._hunts = Object.values(paired);
-    
-    updateStats();
-    renderTab();
-    document.getElementById('lastUpdated').textContent = `Live Sync: ${new Date().toLocaleTimeString()}`;
-  } catch(e) {
-    console.error("Leaderboard Error:", e);
-    content.innerHTML = `<div class="error">Sync Failed: ${e.message}</div>`;
-  }
-}
+      if (run.player.toLowerCase() === 'jeremy') paired[key].jeremy = run;
+      if (run.player.toLowerCase() === 'matt') paired[key].matt = run;
 
 function getFilteredHunts() {
   let hunts = window._hunts || [];
