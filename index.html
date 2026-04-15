@@ -61,19 +61,31 @@
     }
 
     table {
-      width: 90%;
+      width: 95%;
       margin: auto;
       border-collapse: collapse;
+      table-layout: fixed; /* Ensures specific column widths */
     }
 
     th, td {
-      padding: 12px;
+      padding: 8px 10px;
       text-align: left;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
+
+    /* Column Width Configuration */
+    th:nth-child(1), td:nth-child(1) { width: auto; }  /* Monster (Flexible) */
+    th:nth-child(2), td:nth-child(2) { width: 100px; } /* Player */
+    th:nth-child(3), td:nth-child(3) { width: 160px; } /* Weapon */
+    th:nth-child(4), td:nth-child(4) { width: 100px; text-align: right; } /* Time */
 
     th {
       border-bottom: 1px solid #2a3242;
       color: #9fb3c8;
+      font-size: 0.85rem;
+      text-transform: uppercase;
     }
 
     tr {
@@ -81,10 +93,11 @@
     }
 
     .tier-row td {
-      padding-top: 16px;
+      padding-top: 20px;
       font-weight: bold;
       color: #ffb347;
       border-bottom: 1px solid #2a3242;
+      background: rgba(255, 179, 71, 0.05);
     }
 
     .cell-flex {
@@ -94,14 +107,14 @@
     }
 
     .icon {
-      width: 26px;
-      height: 26px;
+      width: 24px;
+      height: 24px;
       object-fit: contain;
     }
 
     .icon.weapon {
-      width: 22px;
-      height: 22px;
+      width: 20px;
+      height: 20px;
       opacity: 0.9;
     }
 
@@ -128,12 +141,14 @@
     .time {
       font-family: monospace;
       font-weight: 600;
+      color: #ffb347;
     }
 
     #lastUpdated {
       text-align: center;
       margin: 20px;
       color: #7f8ca3;
+      font-size: 0.8rem;
     }
   </style>
 </head>
@@ -186,7 +201,6 @@ function parseCSV(text) {
 
   for (let i = 0; i < text.length; i++) {
     const char = text[i];
-
     if (char === '"') {
       if (inQuotes && text[i + 1] === '"') {
         current += '"';
@@ -208,37 +222,38 @@ function parseCSV(text) {
       current += char;
     }
   }
-
   if (current || row.length) {
     row.push(current);
     rows.push(row);
   }
-
   return rows;
 }
 
 // --- TIME ---
 function parseTime(val) {
   if (!val) return null;
-
   const s = val.toString().toLowerCase().trim();
   if (s.includes('dnf')) return null;
 
-  const m = s.match(/^(\d+):(\d+)/);
+  // Supports mm:ss and mm:ss.ms
+  const m = s.match(/^(\d+):(\d+)(\.\d+)?/);
   if (!m) return null;
 
   const minutes = parseInt(m[1]);
   const seconds = parseInt(m[2]);
+  const ms = m[3] ? parseFloat(m[3]) : 0;
 
   if (minutes >= 59) return null;
-
-  return minutes * 60 + seconds;
+  return (minutes * 60) + seconds + ms;
 }
 
 function formatTime(secs) {
   const m = Math.floor(secs / 60);
   const s = Math.floor(secs % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
+  const ms = (secs % 1).toFixed(2).substring(1); 
+  
+  // Appends .xx only if there is a fractional value
+  return `${m}:${s.toString().padStart(2, '0')}${ms === '.00' ? '' : ms}`;
 }
 
 // --- LOAD DATA ---
@@ -247,25 +262,23 @@ async function loadData() {
   status.textContent = "Syncing...";
 
   try {
+    const ts = Date.now(); // Cache-buster
     const [runsRes, monsterRes, weaponRes] = await Promise.all([
-      fetch(`${SHEET_BASE}&gid=${GID_RUNS}`).then(r => r.text()),
-      fetch(`${SHEET_BASE}&gid=${GID_MONSTERS}`).then(r => r.text()),
-      fetch(`${SHEET_BASE}&gid=${GID_WEAPONS}`).then(r => r.text())
+      fetch(`${SHEET_BASE}&gid=${GID_RUNS}&t=${ts}`).then(r => r.text()),
+      fetch(`${SHEET_BASE}&gid=${GID_MONSTERS}&t=${ts}`).then(r => r.text()),
+      fetch(`${SHEET_BASE}&gid=${GID_WEAPONS}&t=${ts}`).then(r => r.text())
     ]);
 
     const runRows = parseCSV(runsRes);
     const monsterRows = parseCSV(monsterRes);
     const weaponRows = parseCSV(weaponRes);
 
-    // MONSTER DATA (A=tier, B=name, D=icon)
     monsterIcons = {};
     monsterTiers = {};
-
     monsterRows.slice(1).forEach(r => {
       const tier = r[0];
       const name = r[1];
       const icon = r[3];
-
       if (name) {
         const key = name.trim().toLowerCase();
         monsterIcons[key] = icon;
@@ -273,7 +286,6 @@ async function loadData() {
       }
     });
 
-    // WEAPON DATA (A=name, C=icon)
     weaponIcons = {};
     weaponRows.slice(1).forEach(r => {
       if (r[0] && r[2]) {
@@ -281,10 +293,8 @@ async function loadData() {
       }
     });
 
-    // RUN DATA
     const headers = runRows[0].map(h => h.toLowerCase());
     const col = name => headers.indexOf(name);
-
     const colPlayer = col('player');
     const colMonster = col('monster');
     const colVariant = col('variant');
@@ -292,10 +302,8 @@ async function loadData() {
     const colWeapon = col('weapon');
 
     allRuns = [];
-
     runRows.slice(1).forEach(r => {
       if (!r[colPlayer]) return;
-
       const time = parseTime(r[colTime]);
       if (time === null) return;
 
@@ -310,7 +318,6 @@ async function loadData() {
 
     buildBestRuns();
     renderLeaderboard();
-
     status.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
 
   } catch (e) {
@@ -320,40 +327,31 @@ async function loadData() {
   }
 }
 
-// --- BEST RUNS ---
 function buildBestRuns() {
   const map = {};
-
   allRuns.forEach(run => {
     const key = `${run.variant}-${run.monster}`.toLowerCase();
-
     if (!map[key] || run.bestTime < map[key].bestTime) {
       map[key] = run;
     }
   });
-
   bestRuns = Object.values(map).sort((a, b) => a.bestTime - b.bestTime);
 }
 
-// --- RENDER ---
 function renderLeaderboard() {
-  let jeremyWins = 0;
-  let mattWins = 0;
-
+  let jWins = 0, mWins = 0;
   bestRuns.forEach(r => {
-    if (r.player.toLowerCase().includes('jeremy')) jeremyWins++;
-    if (r.player.toLowerCase().includes('matt')) mattWins++;
+    if (r.player.toLowerCase().includes('jeremy')) jWins++;
+    if (r.player.toLowerCase().includes('matt')) mWins++;
   });
 
-  document.getElementById('jeremyCount').textContent = jeremyWins;
-  document.getElementById('mattCount').textContent = mattWins;
+  document.getElementById('jeremyCount').textContent = jWins;
+  document.getElementById('mattCount').textContent = mWins;
 
   const grouped = {};
-
   bestRuns.forEach(r => {
     const key = r.monster.trim().toLowerCase();
     const tier = monsterTiers[key] || 'Unknown';
-
     if (!grouped[tier]) grouped[tier] = [];
     grouped[tier].push(r);
   });
@@ -361,21 +359,18 @@ function renderLeaderboard() {
   const sortedTiers = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
 
   let html = `<table><thead><tr>
-    <th>Tier</th><th>Monster</th><th>Player</th><th>Weapon</th><th>Time</th>
+    <th>Monster</th><th>Player</th><th>Weapon</th><th style="text-align:right">Time</th>
   </tr></thead><tbody>`;
 
   sortedTiers.forEach(tier => {
-    html += `<tr class="tier-row"><td colspan="5">${tier}</td></tr>`;
-
+    html += `<tr class="tier-row"><td colspan="4">${tier}</td></tr>`;
     grouped[tier].forEach(r => {
       const mIcon = monsterIcons[r.monster.trim().toLowerCase()];
       const wIcon = weaponIcons[r.weapon.trim().toLowerCase()];
-
       const playerClass = r.player.toLowerCase().includes('jeremy') ? 'jeremy' : 'matt';
 
       html += `
         <tr class="row-${playerClass}">
-          <td>${tier}</td>
           <td><div class="cell-flex">
             ${mIcon ? `<img src="${mIcon}" class="icon">` : ''}
             ${r.monster}
@@ -385,7 +380,7 @@ function renderLeaderboard() {
             ${wIcon ? `<img src="${wIcon}" class="icon weapon">` : ''}
             ${r.weapon}
           </div></td>
-          <td class="time">${formatTime(r.bestTime)}</td>
+          <td class="time" style="text-align:right">${formatTime(r.bestTime)}</td>
         </tr>
       `;
     });
