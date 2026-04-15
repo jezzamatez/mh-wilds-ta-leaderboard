@@ -490,19 +490,27 @@ function parseTime(str) {
   if (!str) return null;
   const s = str.toString().toLowerCase().trim();
   if (s.includes('dnf') || s === '') return null;
+  
+  // Handle Google's Date format: Date(1899,11,30,0,5,12) -> 5:12
+  if (s.includes('date')) {
+    const parts = s.match(/\d+/g);
+    if (parts && parts.length >= 6) {
+      const mins = parseInt(parts[4]);
+      const secs = parseInt(parts[5]);
+      return (mins * 60) + secs;
+    }
+  }
+
   const m = s.match(/^(\d+):(\d+)(\.\d+)?$/);
   if (!m) return null;
-  const mins = parseInt(m[1]);
-  const secs = parseInt(m[2]);
-  const ms = m[3] ? parseFloat(m[3]) : 0;
-  return (mins * 60) + secs + ms;
+  return (parseInt(m[1]) * 60) + parseInt(m[2]) + (m[3] ? parseFloat(m[3]) : 0);
 }
 
 function formatTime(secs) {
   if (secs === null || isNaN(secs) || secs >= DNF_TIME) return 'DNF';
   const m = Math.floor(secs / 60);
-  const s = (secs - m * 60).toFixed(2);
-  return `${m}:${s.toString().padStart(5, '0')}`;
+  const s = Math.floor(secs % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 async function loadData() {
@@ -511,47 +519,40 @@ async function loadData() {
 
   try {
     const rows = await fetchJSON();
-    if (!rows || rows.length === 0) throw new Error("Spreadsheet returned no data.");
-
-    const headerRow = rows[0].c;
-    let colMap = { variant: -1, tier: -1, icon: -1, player: -1, total: -1 };
-
-    headerRow.forEach((cell, i) => {
-      const label = (cell?.v || cell?.f || '').toString().toLowerCase();
-      if (label.includes('variant')) colMap.variant = i;
-      if (label.includes('tier')) colMap.tier = i;
-      if (label.includes('icon')) colMap.icon = i;
-      if (label.includes('player')) colMap.player = i;
-      if (label.includes('total')) colMap.total = i;
-    });
-
-    if (colMap.player === -1 || colMap.total === -1) {
-      throw new Error("Required headers (Player/Total) not found in Row 1.");
-    }
+    if (!rows || rows.length === 0) throw new Error("No data found.");
 
     allRuns = [];
-    for (let i = 1; i < rows.length; i++) {
-      const cells = rows[i].c;
-      if (!cells) continue;
-      const pRaw = cells[colMap.player]?.v || cells[colMap.player]?.f || '';
-      const playerName = pRaw.toString().trim();
-      if (!playerName) continue;
+    
+    // Based on your error, data starts at Row 0
+    // Col 0: Variant ("Tempered")
+    // Col 1: Tier ("5★")
+    // Col 3: Player ("Jeremy")
+    // Col 8: Time ("Date(...)")
+    
+    rows.forEach(row => {
+      const cells = row.c;
+      if (!cells || !cells[3]) return;
+
+      const playerName = (cells[3]?.v || cells[3]?.f || '').toString().trim();
+      if (!playerName) return;
+
+      const timeRaw = cells[8]?.v || cells[8]?.f || '';
 
       allRuns.push({
-        variant: cells[colMap.variant]?.v || cells[colMap.variant]?.f || 'Base',
-        tier: cells[colMap.tier]?.v || cells[colMap.tier]?.f || '',
-        icon: cells[colMap.icon]?.v || cells[colMap.icon]?.f || '',
+        variant: cells[0]?.v || 'Base',
+        tier: cells[1]?.v || '',
+        icon: '👾', // Default icon since Col 2 was empty in your snippet
         player: playerName,
-        bestTime: parseTime(cells[colMap.total]?.f || cells[colMap.total]?.v)
+        bestTime: parseTime(timeRaw)
       });
-    }
+    });
 
     const paired = {};
     allRuns.forEach(run => {
-      const key = `${run.variant}-${run.tier}-${run.icon}`.toLowerCase().replace(/\s/g, '');
+      const key = `${run.variant}-${run.tier}`.toLowerCase().replace(/\s/g, '');
       if (!paired[key]) {
         paired[key] = { 
-          monsterName: `${run.variant} ${run.tier}`.trim() || "Unknown Monster", 
+          monsterName: `${run.variant} ${run.tier}`.trim(), 
           icon: run.icon, 
           variant: run.variant 
         };
@@ -564,14 +565,14 @@ async function loadData() {
     window._hunts = Object.values(paired);
     
     if (window._hunts.length === 0) {
-      content.innerHTML = `<div class="empty">No runs paired. Check names and headers.</div>`;
+      content.innerHTML = `<div class="empty">No runs found for Jeremy or Matt.</div>`;
     } else {
       updateStats();
       renderTab();
       document.getElementById('lastUpdated').textContent = `Live Sync: ${new Date().toLocaleTimeString()}`;
     }
   } catch(e) {
-    console.error("Load Error:", e);
+    console.error(e);
     content.innerHTML = `<div class="error"><b>Sync Error:</b> ${e.message}</div>`;
   }
 }
@@ -591,10 +592,9 @@ function renderTab() {
 function renderLeaderboard() {
   const hunts = getFilteredHunts();
   const content = document.getElementById('mainContent');
-  let html = `<div class="board-wrap"><table><thead><tr><th>Icon</th><th>Hunt</th><th>Jeremy</th><th>Matt</th></tr></thead><tbody>`;
+  let html = `<div class="board-wrap"><table><thead><tr><th>Hunt</th><th>Jeremy</th><th>Matt</th></tr></thead><tbody>`;
   hunts.forEach(h => {
     html += `<tr>
-      <td style="font-size: 20px;">${h.icon}</td>
       <td><span class="monster-name">${h.monsterName}</span> ${variantTag(h.variant)}</td>
       <td class="num" style="color:var(--jeremy)">${formatTime(h.jeremy?.bestTime)}</td>
       <td class="num" style="color:var(--matt)">${formatTime(h.matt?.bestTime)}</td>
@@ -625,10 +625,7 @@ function renderMonsters() {
   hunts.forEach(h => {
     html += `<div class="monster-card">
       <div class="mc-header">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:24px">${h.icon}</span>
           <div class="mc-title">${h.monsterName}</div>
-        </div>
       </div>
       <div class="mc-row">Jeremy: <b>${formatTime(h.jeremy?.bestTime)}</b></div>
       <div class="mc-row">Matt: <b>${formatTime(h.matt?.bestTime)}</b></div>
