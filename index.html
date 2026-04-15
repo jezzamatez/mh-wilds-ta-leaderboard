@@ -18,7 +18,7 @@
       margin-top: 20px;
     }
 
-    /* Scoreboard: Jeremy & Matt cards aligned to table width */
+    /* Scoreboard styling with Name above Number */
     .scoreboard {
       display: flex;
       justify-content: space-between;
@@ -37,15 +37,8 @@
       max-width: 440px;
     }
 
-    .score-jeremy {
-      border-bottom: 3px solid #4ea1ff;
-      color: #4ea1ff;
-    }
-
-    .score-matt {
-      border-bottom: 3px solid #ffb347;
-      color: #ffb347;
-    }
+    .score-jeremy { border-bottom: 3px solid #4ea1ff; color: #4ea1ff; }
+    .score-matt { border-bottom: 3px solid #ffb347; color: #ffb347; }
 
     .score span {
       display: block;
@@ -55,7 +48,7 @@
       color: #e6edf3;
     }
 
-    /* Tabs Navigation */
+    /* Navigation Tabs */
     .tabs {
       display: flex;
       justify-content: center;
@@ -73,7 +66,6 @@
       border-radius: 8px;
       cursor: pointer;
       max-width: 445px;
-      transition: background 0.2s;
     }
 
     .tab.active {
@@ -82,7 +74,7 @@
       background: #1c2333;
     }
 
-    /* Main Table Styles */
+    /* Leaderboard Table Styles */
     table {
       width: 95%;
       max-width: 900px;
@@ -99,27 +91,23 @@
       white-space: nowrap;
     }
 
-    /* Column Widths for Leaderboard */
+    /* Leaderboard Columns */
     .leaderboard-table th:nth-child(1), .leaderboard-table td:nth-child(1) { width: 220px; } 
     .leaderboard-table th:nth-child(2), .leaderboard-table td:nth-child(2) { width: 100px; } 
     .leaderboard-table th:nth-child(3), .leaderboard-table td:nth-child(3) { width: 160px; } 
     .leaderboard-table th:nth-child(4), .leaderboard-table td:nth-child(4) { width: 100px; text-align: right; }
 
-    /* Weapon Grid Specifics */
-    .weapon-grid { table-layout: auto; width: 95%; max-width: 1200px; }
-    .weapon-header-cell { text-align: center; font-size: 0.7rem; padding: 4px; }
-    .weapon-header-cell img { display: block; margin: 0 auto 4px; }
+    /* Weapon Grid Specifics (No Text Headers) */
+    .weapon-grid { table-layout: auto; width: 95%; max-width: 1100px; }
+    .weapon-header-cell { text-align: center; padding: 10px 4px; width: 45px; }
+    .weapon-header-cell img { display: block; margin: 0 auto; width: 24px; height: 24px; }
+    .weapon-header-cell span { display: none; } /* Hide the text label */
+
     .monster-cell { vertical-align: middle; font-weight: bold; background: rgba(255, 255, 255, 0.02); }
     .sub-row-player { font-size: 0.8rem; height: 30px; font-weight: 600; }
-    .time-cell { text-align: center; font-family: monospace; border-left: 1px solid #1c2333; font-size: 0.85rem; }
+    .time-cell { text-align: center; font-family: monospace; border-left: 1px solid #1c2333; font-size: 0.8rem; }
 
-    th {
-      border-bottom: 1px solid #2a3242;
-      color: #9fb3c8;
-      font-size: 0.85rem;
-      text-transform: uppercase;
-    }
-
+    th { border-bottom: 1px solid #2a3242; color: #9fb3c8; font-size: 0.85rem; text-transform: uppercase; }
     tr { border-bottom: 1px solid #1c2333; }
 
     .tier-row td {
@@ -149,14 +137,8 @@
 <h1>TA Leaderboard</h1>
 
 <div class="scoreboard">
-  <div class="score score-jeremy">
-    Jeremy
-    <span id="jeremyCount">0</span>
-  </div>
-  <div class="score score-matt">
-    Matt
-    <span id="mattCount">0</span>
-  </div>
+  <div class="score score-jeremy">Jeremy <span id="jeremyCount">0</span></div>
+  <div class="score score-matt">Matt <span id="mattCount">0</span></div>
 </div>
 
 <div class="tabs">
@@ -202,7 +184,7 @@ function parseCSV(text) {
 function parseTime(val) {
   if (!val) return null;
   const s = val.toString().toLowerCase().trim();
-  if (s.includes('dnf')) return null;
+  if (s.includes('dnf') || s === "") return null;
   const m = s.match(/^(\d+):(\d+)(\.\d+)?/);
   if (!m) return null;
   return parseInt(m[1]) * 60 + parseInt(m[2]) + (m[3] ? parseFloat(m[3]) : 0);
@@ -219,16 +201,16 @@ async function loadData() {
   document.getElementById('lastUpdated').textContent = "Syncing...";
   try {
     const ts = Date.now();
-    const [runsRes, monsterRes, weaponRes] = await Promise.all([
+    const [runsRes, mRes, wRes] = await Promise.all([
       fetch(`${SHEET_BASE}&gid=${GID_RUNS}&t=${ts}`).then(r => r.text()),
       fetch(`${SHEET_BASE}&gid=${GID_MONSTERS}&t=${ts}`).then(r => r.text()),
       fetch(`${SHEET_BASE}&gid=${GID_WEAPONS}&t=${ts}`).then(r => r.text())
     ]);
 
-    const runRows = parseCSV(runsRes), monsterRows = parseCSV(monsterRes), weaponRows = parseCSV(weaponRes);
+    const runRows = parseCSV(runsRes), mRows = parseCSV(mRes), wRows = parseCSV(wRes);
 
     monsterIcons = {}; monsterTiers = {};
-    monsterRows.slice(1).forEach(r => {
+    mRows.slice(1).forEach(r => {
       if (r[1]) {
         const key = r[1].trim().toLowerCase();
         monsterTiers[key] = r[0];
@@ -237,17 +219,20 @@ async function loadData() {
     });
 
     weaponIcons = {};
-    weaponRows.slice(1).forEach(r => { if (r[0] && r[2]) weaponIcons[r[0].trim().toLowerCase()] = r[2]; });
+    wRows.slice(1).forEach(r => { if (r[0] && r[2]) weaponIcons[r[0].trim().toLowerCase()] = r[2]; });
 
     const headers = runRows[0].map(h => h.toLowerCase());
-    const col = n => headers.indexOf(n);
-    const cP = col('player'), cM = col('monster'), cV = col('variant'), cT = col('time') !== -1 ? col('time') : col('best time'), cW = col('weapon');
+    const cP = headers.indexOf('player'), cM = headers.indexOf('monster'), cT = headers.indexOf('time') !== -1 ? headers.indexOf('time') : headers.indexOf('best time'), cW = headers.indexOf('weapon');
 
     allRuns = [];
     runRows.slice(1).forEach(r => {
       const time = parseTime(r[cT]);
-      if (r[cP] && time !== null) {
-        allRuns.push({ player: r[cP], monster: r[cM], variant: r[cV] || 'Base', weapon: r[cW] || '', bestTime: time });
+      const weapon = r[cW] ? r[cW].trim() : "";
+      const monster = r[cM] ? r[cM].trim() : "";
+      
+      // STRICT FILTER: Must have Player, Monster, Weapon, and valid Time
+      if (r[cP] && monster !== "" && weapon !== "" && time !== null) {
+        allRuns.push({ player: r[cP], monster: monster, variant: r[headers.indexOf('variant')] || 'Base', weapon: weapon, bestTime: time });
       }
     });
 
@@ -291,10 +276,12 @@ function renderLeaderboard() {
     html += `<tr class="tier-row"><td colspan="4">${tier}</td></tr>`;
     grouped[tier].forEach(r => {
       const pCls = r.player.toLowerCase().includes('jeremy') ? 'jeremy' : 'matt';
+      const mKey = r.monster.toLowerCase();
+      const wKey = r.weapon.toLowerCase();
       html += `<tr class="row-${pCls}">
-        <td><div class="cell-flex">${monsterIcons[r.monster.toLowerCase()] ? `<img src="${monsterIcons[r.monster.toLowerCase()]}" class="icon">` : ''}${r.monster}</div></td>
+        <td><div class="cell-flex">${monsterIcons[mKey] ? `<img src="${monsterIcons[mKey]}" class="icon">` : ''}${r.monster}</div></td>
         <td class="player ${pCls}">${r.player}</td>
-        <td><div class="cell-flex">${weaponIcons[r.weapon.toLowerCase()] ? `<img src="${weaponIcons[r.weapon.toLowerCase()]}" class="icon weapon">` : ''}${r.weapon}</div></td>
+        <td><div class="cell-flex">${weaponIcons[wKey] ? `<img src="${weaponIcons[wKey]}" class="icon weapon">` : ''}${r.weapon}</div></td>
         <td class="time" style="text-align:right">${formatTime(r.bestTime)}</td>
       </tr>`;
     });
@@ -305,12 +292,15 @@ function renderLeaderboard() {
 function renderWeaponTimes() {
   const weapons = [...new Set(allRuns.map(r => r.weapon))].sort();
   const monsters = [...new Set(bestRuns.map(r => r.monster))];
+  
   let html = `<table class="weapon-grid"><thead><tr><th style="width:200px">Monster / Player</th>`;
   weapons.forEach(w => {
     const icon = weaponIcons[w.toLowerCase()];
-    html += `<th class="weapon-header-cell">${icon ? `<img src="${icon}" class="icon">` : ''}${w}</th>`;
+    // Header uses icon only; text is hidden via CSS but kept for accessibility/tooltips
+    html += `<th class="weapon-header-cell">${icon ? `<img src="${icon}" class="icon" title="${w}">` : ''}<span>${w}</span></th>`;
   });
   html += `</tr></thead><tbody>`;
+
   monsters.forEach(mName => {
     const mKey = mName.toLowerCase();
     html += `<tr><td rowspan="2" class="monster-cell"><div class="cell-flex">${monsterIcons[mKey] ? `<img src="${monsterIcons[mKey]}" class="icon">` : ''}<div>${mName}<br><small style="color:#7f8ca3">${monsterTiers[mKey]||''}</small></div></div></td>
