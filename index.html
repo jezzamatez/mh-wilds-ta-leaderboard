@@ -191,13 +191,21 @@ function parseCSV(text) {
 // --- TIME HELPERS ---
 function parseTime(val) {
   if (!val) return null;
+
   const s = val.toString().toLowerCase().trim();
+
   if (s.includes('dnf')) return null;
 
   const m = s.match(/^(\d+):(\d+)/);
   if (!m) return null;
 
-  return parseInt(m[1]) * 60 + parseInt(m[2]);
+  const minutes = parseInt(m[1]);
+  const seconds = parseInt(m[2]);
+
+  // 🔥 HARD FILTER: anything 59:00 or higher = DNF
+  if (minutes >= 59) return null;
+
+  return minutes * 60 + seconds;
 }
 
 function formatTime(secs) {
