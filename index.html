@@ -476,9 +476,12 @@ let allRuns = [];
 let filters = { variant: 'all', player: 'all' };
 let currentTab = 'leaderboard';
 
-// This simplified function uses the direct public link
+// Using a proxy to bypass browser security blocks (CORS)
 async function fetchCSV() {
-  const res = await fetch(PUBLISHED_CSV_URL);
+  const proxyUrl = 'https://corsproxy.io/?';
+  const targetUrl = encodeURIComponent(PUBLISHED_CSV_URL);
+  const res = await fetch(proxyUrl + targetUrl);
+  
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.text();
 }
