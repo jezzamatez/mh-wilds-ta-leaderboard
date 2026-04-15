@@ -469,125 +469,103 @@
 </main>
 
 <script>
-// Your direct published CSV link
-const PUBLISHED_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR8i7-4hmloDOdy0JKUAGCJdwGwlsToeFPTucntnVRQ5v4D15LP8sPoAsCidu2LaABWxIw3qHwTjSrF/pub?gid=gid=451082162&single=true&output=csv';
+const SHEET_ID = '1H6wf4FxwHntdQvsy5DSMXxaEpgLPeX7NQ7SQ51KaU04';
+const GID = '451082162';
+const DATA_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
 const DNF_TIME = 59 * 60;
 
 let allRuns = [];
 let filters = { variant: 'all', player: 'all' };
 let currentTab = 'leaderboard';
 
-// Using a high-availability proxy to ensure cross-origin data loads correctly
-async function fetchCSV() {
-  // Try fetching directly from Google
-  const res = await fetch(PUBLISHED_CSV_URL);
-  
+async function fetchJSON() {
+  const proxyUrl = 'https://api.allorigins.win/raw?url=';
+  const res = await fetch(proxyUrl + encodeURIComponent(DATA_URL));
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.text();
-}
-
-function parseCSV(text) {
-  const lines = text.split('\n').map(l => l.replace(/\r/g,'')).filter(l => l.trim() !== '');
-  return lines.map(l => {
-    const cells = [];
-    let cur = '', inQ = false;
-    for (let c of l) {
-      if (c === '"') { inQ = !inQ; }
-      else if (c === ',' && !inQ) { cells.push(cur); cur = ''; }
-      else cur += c;
-    }
-    cells.push(cur);
-    return cells;
-  });
+  const text = await res.text();
+  
+  // Extract JSON from the Google Wrapper
+  const json = JSON.parse(text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1));
+  return json.table.rows;
 }
 
 function parseTime(str) {
-  if (!str || str.trim() === '' || str.toLowerCase().includes('dnf')) return null;
-  str = str.trim();
-  const m = str.match(/^(\d+):(\d+)\.(\d+)$/);
+  if (!str || typeof str !== 'string' || str.toLowerCase().includes('dnf')) return null;
+  const m = str.trim().match(/^(\d+):(\d+)(\.\d+)?$/);
   if (!m) return null;
-  const secs = parseInt(m[1]) * 60 + parseInt(m[2]) + parseInt(m[3]) / 100;
-  return secs >= DNF_TIME ? null : secs;
+  const mins = parseInt(m[1]);
+  const secs = parseInt(m[2]);
+  const ms = m[3] ? parseFloat(m[3]) : 0;
+  return (mins * 60) + secs + ms;
 }
 
 function formatTime(secs) {
-  if (secs === null) return 'DNF';
+  if (secs === null || isNaN(secs)) return 'DNF';
   const m = Math.floor(secs / 60);
   const s = (secs - m * 60).toFixed(2);
   return `${m}:${s.toString().padStart(5, '0')}`;
 }
 
-function stars(tier) {
-  const n = parseInt(tier);
-  return isNaN(n) ? tier : '★'.repeat(n);
-}
-
 async function loadData() {
   const content = document.getElementById('mainContent');
-  content.innerHTML = '<div class="loading"><div class="spinner"></div>Loading leaderboard data...</div>';
-  document.getElementById('lastUpdated').textContent = 'Loading...';
-
   try {
-    const raw = await fetchCSV();
-    const rows = parseCSV(raw);
-
-    // Locate the header row (usually contains 'Variant' and 'Player')
-    let headerIdx = rows.findIndex(r => r.some(c => c.trim().toLowerCase() === 'variant'));
-    if (headerIdx === -1) throw new Error('Data format incorrect: Could not find header row.');
-
-    const header = rows[headerIdx];
-    const playerCol = header.findIndex(c => c.trim().toLowerCase() === 'player');
-    const totalCol = header.findIndex(c => c.trim().toLowerCase() === 'grand total');
-
+    const rows = await fetchJSON();
     allRuns = [];
-    let curVariant = '', curTier = '';
 
-    // Parse data rows starting after the header
-    for (let i = headerIdx + 1; i < rows.length; i++) {
-      const r = rows[i];
-      if (!r[playerCol] || r[playerCol].trim() === '') continue;
-
-      if (r[0] && r[0].trim() !== '') curVariant = r[0].trim();
-      if (r[1] && r[1].trim() !== '') curTier = r[1].trim();
+    rows.forEach((row) => {
+      const cells = row.c;
+      // Index mapping based on your sheet: 0=Variant, 1=Tier, 2=Icon, 4=Player, 13=Total
+      if (!cells || !cells[4]) return;
 
       allRuns.push({
-        variant: curVariant || 'Base',
-        tier: curTier,
-        player: r[playerCol].trim(),
-        bestTime: parseTime(r[totalCol]),
-        rowIdx: i
+        variant: cells[0]?.v || 'Base',
+        tier: cells[1]?.v || '',
+        icon: cells[2]?.v || '', // This captures the icon data
+        player: cells[4]?.v,
+        bestTime: parseTime(cells[13]?.v)
       });
-    }
+    });
 
-    // Pair Jeremy and Matt by their row order
+    // Smart pairing based on Monster Name/Tier rather than just row order
     window._hunts = [];
-    for (let i = 0; i < allRuns.length; i += 2) {
-      const p1 = allRuns[i];
-      const p2 = allRuns[i+1];
-      const jeremy = p1.player === 'Jeremy' ? p1 : (p2 && p2.player === 'Jeremy' ? p2 : null);
-      const matt = p1.player === 'Matt' ? p1 : (p2 && p2.player === 'Matt' ? p2 : null);
-      
-      const variant = (jeremy || matt).variant;
-      const tier = (jeremy || matt).tier;
-      
-      window._hunts.push({
-        id: i / 2,
-        monsterName: `${variant} ${tier} #${(i/2) + 1}`,
-        variant,
-        tier,
-        jeremy,
-        matt
-      });
-    }
+    const paired = {};
+    
+    allRuns.forEach(run => {
+      const key = `${run.variant}-${run.tier}-${run.icon}`;
+      if (!paired[key]) paired[key] = { monsterName: `${run.variant} ${run.tier}`, icon: run.icon, variant: run.variant };
+      if (run.player === 'Jeremy') paired[key].jeremy = run;
+      if (run.player === 'Matt') paired[key].matt = run;
+    });
 
+    window._hunts = Object.values(paired);
     updateStats();
     renderTab();
-    document.getElementById('lastUpdated').textContent = `Updated ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+    document.getElementById('lastUpdated').textContent = `Live Sync: ${new Date().toLocaleTimeString()}`;
   } catch(e) {
     console.error(e);
-    content.innerHTML = `<div class="error">Failed to load data.<br><small>${e.message}</small></div>`;
+    content.innerHTML = `<div class="error">Data Sync Failed.</div>`;
   }
 }
+
+function renderLeaderboard() {
+  const hunts = getFilteredHunts();
+  const content = document.getElementById('mainContent');
+  let html = `<div class="board-wrap"><table><thead><tr><th>Icon</th><th>Hunt</th><th>Jeremy</th><th>Matt</th></tr></thead><tbody>`;
+  
+  hunts.forEach(h => {
+    html += `<tr>
+      <td><div class="mc-icon">${h.icon}</div></td>
+      <td><span class="monster-name">${h.monsterName}</span> ${variantTag(h.variant)}</td>
+      <td style="color:var(--jeremy)">${formatTime(h.jeremy?.bestTime)}</td>
+      <td style="color:var(--matt)">${formatTime(h.matt?.bestTime)}</td>
+    </tr>`;
+  });
+  content.innerHTML = html + '</tbody></table></div>';
+}
+
+// ... Rest of your UI functions (switchTab, updateStats, variantTag) ...
+loadData();
+</script>
 
 // ... Keep your existing UI functions (switchTab, renderTab, etc.) below this ...
 function getFilteredHunts() {
