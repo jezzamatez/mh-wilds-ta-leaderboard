@@ -18,7 +18,7 @@
       margin-top: 20px;
     }
 
-    /* Scoreboard styling with Name above Number */
+    /* Scoreboard styling */
     .scoreboard {
       display: flex;
       justify-content: space-between;
@@ -74,7 +74,7 @@
       background: #1c2333;
     }
 
-    /* Leaderboard Table Styles */
+    /* Table Styles */
     table {
       width: 95%;
       max-width: 900px;
@@ -97,11 +97,11 @@
     .leaderboard-table th:nth-child(3), .leaderboard-table td:nth-child(3) { width: 160px; } 
     .leaderboard-table th:nth-child(4), .leaderboard-table td:nth-child(4) { width: 100px; text-align: right; }
 
-    /* Weapon Grid Specifics (No Text Headers) */
+    /* Weapon Grid Specifics */
     .weapon-grid { table-layout: auto; width: 95%; max-width: 1100px; }
     .weapon-header-cell { text-align: center; padding: 10px 4px; width: 45px; }
     .weapon-header-cell img { display: block; margin: 0 auto; width: 24px; height: 24px; }
-    .weapon-header-cell span { display: none; } /* Hide the text label */
+    .weapon-header-cell span { display: none; } 
 
     .monster-cell { vertical-align: middle; font-weight: bold; background: rgba(255, 255, 255, 0.02); }
     .sub-row-player { font-size: 0.8rem; height: 30px; font-weight: 600; }
@@ -184,10 +184,22 @@ function parseCSV(text) {
 function parseTime(val) {
   if (!val) return null;
   const s = val.toString().toLowerCase().trim();
-  if (s.includes('dnf') || s === "") return null;
+  
+  // Explicitly ignore DNF and common error placeholders
+  if (s.includes('dnf') || s === "" || s.includes('n/a')) return null;
+
+  // Handle mm:ss or mm:ss.ms
   const m = s.match(/^(\d+):(\d+)(\.\d+)?/);
   if (!m) return null;
-  return parseInt(m[1]) * 60 + parseInt(m[2]) + (m[3] ? parseFloat(m[3]) : 0);
+
+  const minutes = parseInt(m[1]);
+  const seconds = parseInt(m[2]);
+  const ms = m[3] ? parseFloat(m[3]) : 0;
+
+  // STRICT FILTER: Any run 59 minutes or longer is treated as invalid
+  if (minutes >= 59) return null;
+
+  return (minutes * 60) + seconds + ms;
 }
 
 function formatTime(secs) {
@@ -230,7 +242,7 @@ async function loadData() {
       const weapon = r[cW] ? r[cW].trim() : "";
       const monster = r[cM] ? r[cM].trim() : "";
       
-      // STRICT FILTER: Must have Player, Monster, Weapon, and valid Time
+      // Filter out invalid, incomplete, or DNF (59:00+) runs
       if (r[cP] && monster !== "" && weapon !== "" && time !== null) {
         allRuns.push({ player: r[cP], monster: monster, variant: r[headers.indexOf('variant')] || 'Base', weapon: weapon, bestTime: time });
       }
@@ -260,7 +272,10 @@ function switchTab(view, el) {
 
 function renderLeaderboard() {
   let jW = 0, mW = 0;
-  bestRuns.forEach(r => { if (r.player.toLowerCase().includes('jeremy')) jW++; if (r.player.toLowerCase().includes('matt')) mW++; });
+  bestRuns.forEach(r => { 
+    if (r.player.toLowerCase().includes('jeremy')) jW++; 
+    else if (r.player.toLowerCase().includes('matt')) mW++; 
+  });
   document.getElementById('jeremyCount').textContent = jW;
   document.getElementById('mattCount').textContent = mW;
 
@@ -296,7 +311,6 @@ function renderWeaponTimes() {
   let html = `<table class="weapon-grid"><thead><tr><th style="width:200px">Monster / Player</th>`;
   weapons.forEach(w => {
     const icon = weaponIcons[w.toLowerCase()];
-    // Header uses icon only; text is hidden via CSS but kept for accessibility/tooltips
     html += `<th class="weapon-header-cell">${icon ? `<img src="${icon}" class="icon" title="${w}">` : ''}<span>${w}</span></th>`;
   });
   html += `</tr></thead><tbody>`;
