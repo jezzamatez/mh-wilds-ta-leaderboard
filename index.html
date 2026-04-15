@@ -487,18 +487,19 @@ async function fetchJSON() {
 }
 
 function parseTime(str) {
-  if (!str || typeof str !== 'string' || str.toLowerCase().includes('dnf')) return null;
-  const m = str.trim().match(/^(\d+):(\d+)(\.\d+)?$/);
+  if (!str) return null;
+  const s = str.toString().toLowerCase().trim();
+  if (s.includes('dnf') || s === '') return null;
+  const m = s.match(/^(\d+):(\d+)(\.\d+)?$/);
   if (!m) return null;
   const mins = parseInt(m[1]);
   const secs = parseInt(m[2]);
   const ms = m[3] ? parseFloat(m[3]) : 0;
-  const total = (mins * 60) + secs + ms;
-  return total >= DNF_TIME ? null : total;
+  return (mins * 60) + secs + ms;
 }
 
 function formatTime(secs) {
-  if (secs === null || isNaN(secs)) return 'DNF';
+  if (secs === null || isNaN(secs) || secs >= DNF_TIME) return 'DNF';
   const m = Math.floor(secs / 60);
   const s = (secs - m * 60).toFixed(2);
   return `${m}:${s.toString().padStart(5, '0')}`;
@@ -510,8 +511,9 @@ async function loadData() {
 
   try {
     const rows = await fetchJSON();
-    if (!rows || rows.length === 0) throw new Error("No data found");
+    if (!rows || rows.length === 0) throw new Error("No rows found in sheet.");
 
+    // 1. DYNAMIC COLUMN DETECTION
     const headerRow = rows[0].c;
     let colMap = { variant: 0, tier: 1, icon: 2, player: 4, total: 13 };
 
@@ -521,46 +523,59 @@ async function loadData() {
       if (label.includes('tier')) colMap.tier = i;
       if (label.includes('icon')) colMap.icon = i;
       if (label.includes('player')) colMap.player = i;
-      if (label.includes('total') || label.includes('grand')) colMap.total = i;
+      if (label.includes('total')) colMap.total = i;
     });
 
+    console.log("Detected Columns:", colMap);
+
     allRuns = [];
+    // 2. DATA EXTRACTION
     for (let i = 1; i < rows.length; i++) {
       const cells = rows[i].c;
       if (!cells) continue;
 
-      const playerName = cells[colMap.player]?.v || cells[colMap.player]?.f;
+      const pRaw = cells[colMap.player]?.v || cells[colMap.player]?.f || '';
+      const playerName = pRaw.toString().trim();
+      
       if (!playerName) continue;
 
-      const rawTime = cells[colMap.total]?.f || cells[colMap.total]?.v || '';
+      const timeRaw = cells[colMap.total]?.f || cells[colMap.total]?.v || '';
 
       allRuns.push({
         variant: cells[colMap.variant]?.v || cells[colMap.variant]?.f || 'Base',
         tier: cells[colMap.tier]?.v || cells[colMap.tier]?.f || '',
         icon: cells[colMap.icon]?.v || cells[colMap.icon]?.f || '',
-        player: playerName.toString().trim(),
-        bestTime: parseTime(rawTime.toString())
+        player: playerName,
+        bestTime: parseTime(timeRaw)
       });
     }
 
+    // 3. PAIRING LOGIC
     const paired = {};
     allRuns.forEach(run => {
-      const key = `${run.variant}-${run.tier}-${run.icon}`;
+      const key = `${run.variant}-${run.tier}-${run.icon}`.toLowerCase();
       if (!paired[key]) {
         paired[key] = { 
-          monsterName: `${run.variant} ${run.tier}`.trim() || "Unknown Hunt", 
+          monsterName: `${run.variant} ${run.tier}`.trim(), 
           icon: run.icon, 
           variant: run.variant 
         };
       }
-      if (run.player.toLowerCase() === 'jeremy') paired[key].jeremy = run;
-      if (run.player.toLowerCase() === 'matt') paired[key].matt = run;
+      
+      const p = run.player.toLowerCase();
+      if (p === 'jeremy') paired[key].jeremy = run;
+      if (p === 'matt') paired[key].matt = run;
     });
 
     window._hunts = Object.values(paired);
-    updateStats();
-    renderTab();
-    document.getElementById('lastUpdated').textContent = `Live Sync: ${new Date().toLocaleTimeString()}`;
+    
+    if (window._hunts.length === 0) {
+        content.innerHTML = `<div class="empty">Connection successful, but no valid runs were found. Check column headers.</div>`;
+    } else {
+        updateStats();
+        renderTab();
+        document.getElementById('lastUpdated').textContent = `Live Sync: ${new Date().toLocaleTimeString()}`;
+    }
   } catch(e) {
     console.error("Load Error:", e);
     content.innerHTML = `<div class="error">Sync Error: ${e.message}</div>`;
@@ -568,97 +583,7 @@ async function loadData() {
 }
 
 function getFilteredHunts() {
-  let hunts = window._hunts || [];
-  if (filters.variant !== 'all') hunts = hunts.filter(h => h.variant === filters.variant);
-  return hunts;
-}
-
-function renderTab() {
-  if (currentTab === 'leaderboard') renderLeaderboard();
-  else if (currentTab === 'h2h') renderH2H();
-  else renderMonsters();
-}
-
-function renderLeaderboard() {
-  const hunts = getFilteredHunts();
-  const content = document.getElementById('mainContent');
-  
-  let html = `<div class="board-wrap"><table><thead><tr><th>Icon</th><th>Hunt</th><th>Jeremy</th><th>Matt</th></tr></thead><tbody>`;
-  
-  hunts.forEach(h => {
-    html += `<tr>
-      <td>${h.icon}</td>
-      <td><span class="monster-name">${h.monsterName}</span> ${variantTag(h.variant)}</td>
-      <td class="num" style="color:var(--jeremy)">${formatTime(h.jeremy?.bestTime)}</td>
-      <td class="num" style="color:var(--matt)">${formatTime(h.matt?.bestTime)}</td>
-    </tr>`;
-  });
-  content.innerHTML = html + '</tbody></table></div>';
-}
-
-function renderH2H() {
-  const hunts = getFilteredHunts();
-  let jWins = 0, mWins = 0;
-  hunts.forEach(h => {
-    if (h.jeremy?.bestTime && h.matt?.bestTime) {
-      if (h.jeremy.bestTime < h.matt.bestTime) jWins++;
-      else if (h.matt.bestTime < h.jeremy.bestTime) mWins++;
-    }
-  });
-  document.getElementById('mainContent').innerHTML = `
-    <div class="h2h-grid">
-      <div class="h2h-card"><div class="h2h-wins" style="color:var(--jeremy)">${jWins}</div><div class="h2h-label">Jeremy</div></div>
-      <div class="h2h-card"><div class="h2h-wins" style="color:var(--matt)">${mWins}</div><div class="h2h-label">Matt</div></div>
-    </div>`;
-}
-
-function renderMonsters() {
-  const hunts = getFilteredHunts();
-  let html = '<div class="monster-grid">';
-  hunts.forEach(h => {
-    html += `<div class="monster-card">
-      <div class="mc-header">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span>${h.icon}</span>
-          <div class="mc-title">${h.monsterName}</div>
-        </div>
-      </div>
-      <div class="mc-row">Jeremy: ${formatTime(h.jeremy?.bestTime)}</div>
-      <div class="mc-row">Matt: ${formatTime(h.matt?.bestTime)}</div>
-    </div>`;
-  });
-  document.getElementById('mainContent').innerHTML = html + '</div>';
-}
-
-function updateStats() {
-  const hunts = window._hunts || [];
-  document.getElementById('jeremyCount').textContent = hunts.filter(h => h.jeremy?.bestTime).length;
-  document.getElementById('mattCount').textContent = hunts.filter(h => h.matt?.bestTime).length;
-}
-
-function switchTab(tab, el) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  currentTab = tab;
-  renderTab();
-}
-
-function setFilter(type, val, el) {
-  document.querySelectorAll('.filter-btn').forEach(b => {
-    if (b.getAttribute('onclick') && b.getAttribute('onclick').includes(`'${type}'`)) {
-      b.classList.remove('active');
-    }
-  });
-  el.classList.add('active');
-  filters[type] = val;
-  renderTab();
-}
-
-function variantTag(variant) {
-  const v = (variant||'').toLowerCase();
-  let cls = v === 'tempered' ? 'vt-tempered' : v === 'frenzied' ? 'vt-frenzied' : v === 'alpha' ? 'vt-alpha' : 'vt-base';
-  return `<span class="variant-tag ${cls}">${variant || 'Base'}</span>`;
-}
+  let hunts = window
 
 // ... Rest of your UI functions (switchTab, updateStats, variantTag) ...
 loadData();
