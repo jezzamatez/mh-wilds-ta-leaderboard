@@ -513,35 +513,43 @@ async function loadData() {
   const content = document.getElementById('mainContent');
   try {
     const rows = await fetchJSON();
-    allRuns = [];
+    if (!rows || rows.length === 0) throw new Error("No data found in sheet.");
 
-    rows.forEach((row, index) => {
-      const cells = row.c;
-      // Skip if row is empty or player column (Index 4) is missing
-      if (!cells || !cells[4]) return;
-
-      // Extract values safely, checking both .v (value) and .f (formatted string)
-      const player = cells[4]?.v || cells[4]?.f || '';
-      const timeStr = cells[13]?.f || cells[13]?.v || ''; // Grand Total is Index 13
-      const variant = cells[0]?.v || cells[0]?.f || 'Base';
-      const tier = cells[1]?.v || cells[1]?.f || '';
-      const iconData = cells[2]?.f || cells[2]?.v || ''; // Monster Icon Index 2
-
-      if (player) {
-        allRuns.push({
-          variant: variant,
-          tier: tier,
-          icon: iconData,
-          player: player.trim(),
-          bestTime: parseTime(timeStr.toString())
-        });
-      }
+    // 1. Find the Header Row and Map Columns
+    const headerRow = rows[0].c;
+    const colMap = {};
+    headerRow.forEach((cell, i) => {
+      const val = (cell?.v || '').toString().toLowerCase();
+      if (val.includes('variant')) colMap.variant = i;
+      if (val.includes('tier')) colMap.tier = i;
+      if (val.includes('icon')) colMap.icon = i;
+      if (val.includes('player')) colMap.player = i;
+      if (val.includes('total')) colMap.total = i;
     });
 
-    // Pair Jeremy and Matt
+    console.log("Detected Columns:", colMap); // See this in F12 console
+
+    allRuns = [];
+    // 2. Process data starting from row 1 (after headers)
+    for (let i = 1; i < rows.length; i++) {
+      const cells = rows[i].c;
+      if (!cells) continue;
+
+      const player = cells[colMap.player]?.v || cells[colMap.player]?.f;
+      if (!player) continue;
+
+      allRuns.push({
+        variant: cells[colMap.variant]?.v || cells[colMap.variant]?.f || 'Base',
+        tier: cells[colMap.tier]?.v || cells[colMap.tier]?.f || '',
+        icon: cells[colMap.icon]?.v || cells[colMap.icon]?.f || '',
+        player: player.trim(),
+        bestTime: parseTime(cells[colMap.total]?.f || cells[colMap.total]?.v)
+      });
+    }
+
+    // 3. Pairing Logic
     const paired = {};
     allRuns.forEach(run => {
-      // Create a unique key for each hunt to group the two players together
       const key = `${run.variant}-${run.tier}-${run.icon}`;
       if (!paired[key]) {
         paired[key] = { 
@@ -556,13 +564,12 @@ async function loadData() {
 
     window._hunts = Object.values(paired);
     
-    // Refresh the UI
     updateStats();
     renderTab();
     document.getElementById('lastUpdated').textContent = `Live Sync: ${new Date().toLocaleTimeString()}`;
   } catch(e) {
-    console.error("Data processing error:", e);
-    content.innerHTML = `<div class="error">Data processing failed. Check console (F12).</div>`;
+    console.error("Leaderboard Error:", e);
+    content.innerHTML = `<div class="error">Sync Failed: ${e.message}</div>`;
   }
 }
 
