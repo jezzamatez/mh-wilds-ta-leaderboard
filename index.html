@@ -139,20 +139,14 @@ td, th {
 </div>
 
 <script>
+// --- CONFIG ---
 const SHEET_ID = '1H6wf4FxwHntdQvsy5DSMXxaEpgLPeX7NQ7SQ51KaU04';
 const SHEET_BASE = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
-
 const GID_RUNS = '0';
-const GID_MONSTERS = '73280311';
-const GID_WEAPONS = '2020437619';
-
-const DNF_TIME = 59 * 60;
 
 let allRuns = [];
-let filters = { variant: 'all', player: 'all' };
-let currentTab = 'leaderboard';
 
-// --- CSV parser (robust) ---
+// --- CSV PARSER ---
 function parseCSV(text) {
   const rows = [];
   let row = [];
@@ -192,7 +186,7 @@ function parseCSV(text) {
   return rows;
 }
 
-// --- helpers ---
+// --- TIME HELPERS ---
 function parseTime(val) {
   if (!val) return null;
   const s = val.toString().toLowerCase().trim();
@@ -200,6 +194,7 @@ function parseTime(val) {
 
   const m = s.match(/^(\d+):(\d+)/);
   if (!m) return null;
+
   return parseInt(m[1]) * 60 + parseInt(m[2]);
 }
 
@@ -210,7 +205,7 @@ function formatTime(secs) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-// --- pairing ---
+// --- PAIR RUNS (Jeremy vs Matt per monster) ---
 function pairHunts(runs) {
   const paired = {};
 
@@ -224,26 +219,29 @@ function pairHunts(runs) {
       };
     }
 
-    if (run.player.toLowerCase().includes('jeremy'))
+    if (run.player.toLowerCase().includes('jeremy')) {
       paired[key].jeremy = run;
+    }
 
-    if (run.player.toLowerCase().includes('matt'))
+    if (run.player.toLowerCase().includes('matt')) {
       paired[key].matt = run;
+    }
   });
 
   return Object.values(paired);
 }
 
-// --- LOAD DATA (final version) ---
+// --- LOAD DATA ---
 async function loadData() {
   const content = document.getElementById('mainContent');
+  const status = document.getElementById('lastUpdated');
+
+  status.textContent = "Syncing...";
 
   try {
-    const [runsRes] = await Promise.all([
-      fetch(`${SHEET_BASE}&gid=${GID_RUNS}`).then(r => r.text())
-    ]);
-
-    const rows = parseCSV(runsRes);
+    const res = await fetch(`${SHEET_BASE}&gid=${GID_RUNS}`);
+    const text = await res.text();
+    const rows = parseCSV(text);
 
     const headers = rows[0].map(h => h.trim().toLowerCase());
     const col = name => headers.indexOf(name);
@@ -270,9 +268,12 @@ async function loadData() {
 
     renderLeaderboard();
 
+    status.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+
   } catch (e) {
     console.error(e);
     content.innerHTML = "Failed to load data";
+    status.textContent = "Sync failed";
   }
 }
 
@@ -285,7 +286,7 @@ function renderLeaderboard() {
     if (h.matt) rows.push({ ...h.matt, name: 'Matt' });
   });
 
-  rows.sort((a, b) => (a.bestTime || 9999) - (b.bestTime || 9999));
+  rows.sort((a, b) => (a.bestTime || 999999) - (b.bestTime || 999999));
 
   let html = `
     <table>
@@ -316,7 +317,11 @@ function renderLeaderboard() {
   document.getElementById('mainContent').innerHTML = html;
 }
 
+// --- INIT ---
 loadData();
+
+// optional auto refresh every 2 minutes
+setInterval(loadData, 120000);
 </script>
 
 </body>
