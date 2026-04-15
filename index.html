@@ -144,8 +144,8 @@ const SHEET_ID = '1H6wf4FxwHntdQvsy5DSMXxaEpgLPeX7NQ7SQ51KaU04';
 const SHEET_BASE = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
 
 const GID_RUNS = '0';
-const GID_MONSTERS = '73280311';   // monsterinfo
-const GID_WEAPONS = '2020437619';  // weaponinfo
+const GID_MONSTERS = '73280311';
+const GID_WEAPONS = '2020437619';
 
 let allRuns = [];
 let bestRuns = [];
@@ -233,25 +233,23 @@ async function loadData() {
     const monsterRows = parseCSV(monsterRes);
     const weaponRows = parseCSV(weaponRes);
 
-// --- BUILD MONSTER ICON MAP ---
-monsterIcons = {};
-monsterRows.slice(1).forEach(r => {
-  if (r[1] && r[2]) {
-    const key = r[1].trim().toLowerCase();
-    monsterIcons[key] = r[2];
-  }
-});
+    // --- MONSTER ICONS (B=name, D=url) ---
+    monsterIcons = {};
+    monsterRows.slice(1).forEach(r => {
+      if (r[1] && r[3]) {
+        monsterIcons[r[1].trim().toLowerCase()] = r[3];
+      }
+    });
 
-// --- BUILD WEAPON ICON MAP ---
-weaponIcons = {};
-weaponRows.slice(1).forEach(r => {
-  if (r[0] && r[1]) {
-    const key = r[0].trim().toLowerCase();
-    weaponIcons[key] = r[1];
-  }
-});
+    // --- WEAPON ICONS (A=name, C=url) ---
+    weaponIcons = {};
+    weaponRows.slice(1).forEach(r => {
+      if (r[0] && r[2]) {
+        weaponIcons[r[0].trim().toLowerCase()] = r[2];
+      }
+    });
 
-    // --- MAP RUN DATA ---
+    // --- RUN DATA ---
     const headers = runRows[0].map(h => h.trim().toLowerCase());
     const col = name => headers.indexOf(name);
 
@@ -333,15 +331,21 @@ function renderLeaderboard() {
   `;
 
   bestRuns.forEach((r, i) => {
-const mIcon = monsterIcons[r.monster?.trim().toLowerCase()] || '';
-const wIcon = weaponIcons[r.weapon?.trim().toLowerCase()] || '';
+    const mIcon = monsterIcons[r.monster?.trim().toLowerCase()];
+    const wIcon = weaponIcons[r.weapon?.trim().toLowerCase()];
 
     html += `
       <tr>
         <td>${i + 1}</td>
-        <td>${mIcon} ${r.monster}</td>
+        <td>
+          ${mIcon ? `<img src="${mIcon}" style="width:24px;height:24px;vertical-align:middle;margin-right:6px;">` : ''}
+          ${r.monster}
+        </td>
         <td>${r.player}</td>
-        <td>${wIcon} ${r.weapon}</td>
+        <td>
+          ${wIcon ? `<img src="${wIcon}" style="width:24px;height:24px;vertical-align:middle;margin-right:6px;">` : ''}
+          ${r.weapon}
+        </td>
         <td>${formatTime(r.bestTime)}</td>
       </tr>
     `;
