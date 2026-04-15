@@ -479,8 +479,8 @@ let currentTab = 'leaderboard';
 
 // Using a high-availability proxy to ensure cross-origin data loads correctly
 async function fetchCSV() {
-  const proxyUrl = 'https://api.allorigins.win/raw?url=';
-  const res = await fetch(proxyUrl + encodeURIComponent(PUBLISHED_CSV_URL));
+  // Try fetching directly from Google
+  const res = await fetch(PUBLISHED_CSV_URL);
   
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.text();
