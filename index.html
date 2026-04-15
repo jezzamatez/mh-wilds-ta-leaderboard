@@ -142,12 +142,16 @@ td, th {
 // --- CONFIG ---
 const SHEET_ID = '1H6wf4FxwHntdQvsy5DSMXxaEpgLPeX7NQ7SQ51KaU04';
 const SHEET_BASE = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
-const GID_RUNS = '0';
 
-const DNF_TIME = 59 * 60;
+const GID_RUNS = '0';
+const GID_MONSTERS = '73280311';   // monsterinfo
+const GID_WEAPONS = '2020437619';  // weaponinfo
 
 let allRuns = [];
 let bestRuns = [];
+
+let monsterIcons = {};
+let weaponIcons = {};
 
 // --- CSV PARSER ---
 function parseCSV(text) {
@@ -189,7 +193,7 @@ function parseCSV(text) {
   return rows;
 }
 
-// --- TIME HELPERS ---
+// --- TIME ---
 function parseTime(val) {
   if (!val) return null;
 
@@ -215,17 +219,37 @@ function formatTime(secs) {
 
 // --- LOAD DATA ---
 async function loadData() {
-  const content = document.getElementById('mainContent');
   const status = document.getElementById('lastUpdated');
-
   status.textContent = "Syncing...";
 
   try {
-    const res = await fetch(`${SHEET_BASE}&gid=${GID_RUNS}`);
-    const text = await res.text();
-    const rows = parseCSV(text);
+    const [runsRes, monsterRes, weaponRes] = await Promise.all([
+      fetch(`${SHEET_BASE}&gid=${GID_RUNS}`).then(r => r.text()),
+      fetch(`${SHEET_BASE}&gid=${GID_MONSTERS}`).then(r => r.text()),
+      fetch(`${SHEET_BASE}&gid=${GID_WEAPONS}`).then(r => r.text())
+    ]);
 
-    const headers = rows[0].map(h => h.trim().toLowerCase());
+    const runRows = parseCSV(runsRes);
+    const monsterRows = parseCSV(monsterRes);
+    const weaponRows = parseCSV(weaponRes);
+
+    // --- BUILD ICON MAPS ---
+    monsterIcons = {};
+    monsterRows.slice(1).forEach(r => {
+      if (r[0] && r[1]) {
+        monsterIcons[r[0].trim()] = r[1];
+      }
+    });
+
+    weaponIcons = {};
+    weaponRows.slice(1).forEach(r => {
+      if (r[0] && r[1]) {
+        weaponIcons[r[0].trim()] = r[1];
+      }
+    });
+
+    // --- MAP RUN DATA ---
+    const headers = runRows[0].map(h => h.trim().toLowerCase());
     const col = name => headers.indexOf(name);
 
     const colPlayer = col('player');
@@ -236,7 +260,7 @@ async function loadData() {
 
     allRuns = [];
 
-    rows.slice(1).forEach(r => {
+    runRows.slice(1).forEach(r => {
       if (!r[colPlayer]) return;
 
       const time = parseTime(r[colTime]);
@@ -258,12 +282,12 @@ async function loadData() {
 
   } catch (e) {
     console.error(e);
-    content.innerHTML = "Failed to load data";
+    document.getElementById('mainContent').innerHTML = "Failed to load data";
     status.textContent = "Sync failed";
   }
 }
 
-// --- BUILD BEST RUN PER MONSTER ---
+// --- BEST RUN PER MONSTER ---
 function buildBestRuns() {
   const map = {};
 
@@ -288,7 +312,6 @@ function renderLeaderboard() {
     if (r.player.toLowerCase().includes('matt')) mattWins++;
   });
 
-  // update counters
   document.getElementById('jeremyCount').textContent = jeremyWins;
   document.getElementById('mattCount').textContent = mattWins;
 
@@ -307,12 +330,15 @@ function renderLeaderboard() {
   `;
 
   bestRuns.forEach((r, i) => {
+    const mIcon = monsterIcons[r.monster] || '';
+    const wIcon = weaponIcons[r.weapon] || '';
+
     html += `
       <tr>
         <td>${i + 1}</td>
-        <td>${r.monster}</td>
+        <td>${mIcon} ${r.monster}</td>
         <td>${r.player}</td>
-        <td>${r.weapon}</td>
+        <td>${wIcon} ${r.weapon}</td>
         <td>${formatTime(r.bestTime)}</td>
       </tr>
     `;
