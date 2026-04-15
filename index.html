@@ -287,11 +287,23 @@ function renderLeaderboard() {
 
   rows.sort((a, b) => (a.bestTime || 9999) - (b.bestTime || 9999));
 
-  let html = '<table>';
+  let html = `
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Monster</th>
+          <th>Player</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
 
-  rows.forEach(r => {
+  rows.forEach((r, i) => {
     html += `
       <tr>
+        <td>${i + 1}</td>
         <td>${r.monster}</td>
         <td>${r.name}</td>
         <td>${formatTime(r.bestTime)}</td>
@@ -299,7 +311,7 @@ function renderLeaderboard() {
     `;
   });
 
-  html += '</table>';
+  html += '</tbody></table>';
 
   document.getElementById('mainContent').innerHTML = html;
 }
