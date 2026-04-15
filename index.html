@@ -233,21 +233,23 @@ async function loadData() {
     const monsterRows = parseCSV(monsterRes);
     const weaponRows = parseCSV(weaponRes);
 
-    // --- BUILD MONSTER ICON MAP (FIXED) ---
-    monsterIcons = {};
-    monsterRows.slice(1).forEach(r => {
-      if (r[1] && r[2]) {
-        monsterIcons[r[1].trim()] = r[2];
-      }
-    });
+// --- BUILD MONSTER ICON MAP ---
+monsterIcons = {};
+monsterRows.slice(1).forEach(r => {
+  if (r[1] && r[2]) {
+    const key = r[1].trim().toLowerCase();
+    monsterIcons[key] = r[2];
+  }
+});
 
-    // --- BUILD WEAPON ICON MAP ---
-    weaponIcons = {};
-    weaponRows.slice(1).forEach(r => {
-      if (r[0] && r[1]) {
-        weaponIcons[r[0].trim()] = r[1];
-      }
-    });
+// --- BUILD WEAPON ICON MAP ---
+weaponIcons = {};
+weaponRows.slice(1).forEach(r => {
+  if (r[0] && r[1]) {
+    const key = r[0].trim().toLowerCase();
+    weaponIcons[key] = r[1];
+  }
+});
 
     // --- MAP RUN DATA ---
     const headers = runRows[0].map(h => h.trim().toLowerCase());
