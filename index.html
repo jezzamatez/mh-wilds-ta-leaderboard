@@ -84,6 +84,9 @@ let weaponIcons = {};
 let weaponOrder = []; 
 let currentView = 'leaderboard';
 
+// Helper to remove any potential hidden whitespace or formatting from Sheet data
+const clean = (str) => str ? str.toString().trim() : '';
+
 function parseCSV(text) {
   const rows = [];
   let row = [], current = '', inQuotes = false;
@@ -131,18 +134,18 @@ async function loadData() {
     monsterIcons = {}; monsterTiers = {};
     mRows.slice(1).forEach(r => {
       if (r[1]) {
-        const key = r[1].trim().toLowerCase();
-        monsterTiers[key] = r[0];
-        monsterIcons[key] = r[3];
+        const name = clean(r[1]);
+        monsterTiers[name.toLowerCase()] = clean(r[0]);
+        monsterIcons[name.toLowerCase()] = clean(r[3]);
       }
     });
 
     weaponIcons = {}; weaponOrder = [];
     wRows.slice(1).forEach(r => {
       if (r[0]) {
-        const wName = r[0].trim();
+        const wName = clean(r[0]);
         weaponOrder.push(wName);
-        weaponIcons[wName.toLowerCase()] = r[2];
+        weaponIcons[wName.toLowerCase()] = clean(r[2]);
       }
     });
 
@@ -154,9 +157,9 @@ async function loadData() {
     const weaponBestMap = {};
     runRows.slice(1).forEach(r => {
       const time = parseTime(r[cT]);
-      const weapon = r[cW] ? r[cW].trim() : "";
-      const monster = r[cM] ? r[cM].trim() : "";
-      const player = r[cP] ? r[cP].trim() : "";
+      const weapon = clean(r[cW]);
+      const monster = clean(r[cM]);
+      const player = clean(r[cP]);
       
       if (player && monster && weapon && time !== null) {
         const key = `${player}|${monster}|${weapon}`.toLowerCase();
@@ -192,8 +195,8 @@ function switchTab(view, el) {
 function renderLeaderboard() {
   let jW = 0, mW = 0;
   bestRuns.forEach(r => { 
-    if (r.player.toLowerCase() === 'jeremy') jW++; 
-    else if (r.player.toLowerCase() === 'matt') mW++; 
+    if (r.player.toLowerCase().includes('jeremy')) jW++; 
+    else if (r.player.toLowerCase().includes('matt')) mW++; 
   });
   document.getElementById('jeremyCount').textContent = jW;
   document.getElementById('mattCount').textContent = mW;
@@ -209,7 +212,7 @@ function renderLeaderboard() {
   Object.keys(grouped).sort((a, b) => b.localeCompare(a)).forEach(tier => {
     html += `<tr class="tier-row"><td colspan="4">${tier}</td></tr>`;
     grouped[tier].forEach(r => {
-      const pCls = r.player.toLowerCase() === 'jeremy' ? 'jeremy' : 'matt';
+      const pCls = r.player.toLowerCase().includes('jeremy') ? 'jeremy' : 'matt';
       const mKey = r.monster.toLowerCase(), wKey = r.weapon.toLowerCase();
       html += `<tr class="row-${pCls}">
         <td><div class="cell-flex">${monsterIcons[mKey] ? `<img src="${monsterIcons[mKey]}" class="icon">` : ''}${r.monster}</div></td>
@@ -238,10 +241,10 @@ function renderWeaponTimes() {
   });
   html += `</tr></thead><tbody>`;
 
-  // Pre-create a strict lookup map for the grid
+  // Grid mapping for precise placement
   const gridLookup = {};
   allRuns.forEach(r => {
-    const key = `${r.player}|${r.monster}|${r.weapon}`.toLowerCase();
+    const key = `${r.player.toLowerCase().includes('jeremy') ? 'jeremy' : 'matt'}|${r.monster.toLowerCase()}|${r.weapon.toLowerCase()}`;
     gridLookup[key] = formatTime(r.bestTime);
   });
 
