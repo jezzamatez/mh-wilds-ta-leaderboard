@@ -471,7 +471,6 @@
 <script>
 const SHEET_ID = '1H6wf4FxwHntdQvsy5DSMXxaEpgLPeX7NQ7SQ51KaU04';
 const GID = '451082162';
-// We use the 'gviz' endpoint to get clean JSON that handles icons/images better
 const DATA_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
 const DNF_TIME = 59 * 60;
 
@@ -480,13 +479,9 @@ let filters = { variant: 'all', player: 'all' };
 let currentTab = 'leaderboard';
 
 async function fetchJSON() {
-  // Direct fetch often works better for HTTPS-to-HTTPS on GitHub Pages
-  // If you still get a Network Error, we will try a different proxy approach
   const res = await fetch(DATA_URL);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const text = await res.text();
-  
-  // Google wraps the JSON in a function call; we strip it here
   const json = JSON.parse(text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1));
   return json.table.rows;
 }
@@ -517,10 +512,8 @@ async function loadData() {
     const rows = await fetchJSON();
     if (!rows || rows.length === 0) throw new Error("No data found");
 
-    // 1. AUTO-DETECT COLUMNS
-    // We look at the very first row to find where your data is
     const headerRow = rows[0].c;
-    let colMap = { variant: 0, tier: 1, icon: 2, player: 4, total: 13 }; // Default fallbacks
+    let colMap = { variant: 0, tier: 1, icon: 2, player: 4, total: 13 };
 
     headerRow.forEach((cell, i) => {
       const label = (cell?.v || cell?.f || '').toString().toLowerCase();
@@ -531,10 +524,7 @@ async function loadData() {
       if (label.includes('total') || label.includes('grand')) colMap.total = i;
     });
 
-    console.log("Found Columns at:", colMap); // View this in F12 Console
-
     allRuns = [];
-    // 2. PARSE DATA (Starting from row 1, skipping headers)
     for (let i = 1; i < rows.length; i++) {
       const cells = rows[i].c;
       if (!cells) continue;
@@ -542,8 +532,6 @@ async function loadData() {
       const playerName = cells[colMap.player]?.v || cells[colMap.player]?.f;
       if (!playerName) continue;
 
-      // Google JSON often stores time strings in '.f' (formatted) 
-      // and raw numbers in '.v'. We check both.
       const rawTime = cells[colMap.total]?.f || cells[colMap.total]?.v || '';
 
       allRuns.push({
@@ -555,7 +543,6 @@ async function loadData() {
       });
     }
 
-    // 3. GROUP BY HUNT (Jeremy vs Matt)
     const paired = {};
     allRuns.forEach(run => {
       const key = `${run.variant}-${run.tier}-${run.icon}`;
@@ -568,6 +555,17 @@ async function loadData() {
       }
       if (run.player.toLowerCase() === 'jeremy') paired[key].jeremy = run;
       if (run.player.toLowerCase() === 'matt') paired[key].matt = run;
+    });
+
+    window._hunts = Object.values(paired);
+    updateStats();
+    renderTab();
+    document.getElementById('lastUpdated').textContent = `Live Sync: ${new Date().toLocaleTimeString()}`;
+  } catch(e) {
+    console.error("Load Error:", e);
+    content.innerHTML = `<div class="error">Sync Error: ${e.message}</div>`;
+  }
+}
 
 function getFilteredHunts() {
   let hunts = window._hunts || [];
@@ -662,6 +660,7 @@ function variantTag(variant) {
   let cls = v === 'tempered' ? 'vt-tempered' : v === 'frenzied' ? 'vt-frenzied' : v === 'alpha' ? 'vt-alpha' : 'vt-base';
   return `<span class="variant-tag ${cls}">${variant || 'Base'}</span>`;
 }
+
 
 // ... Rest of your UI functions (switchTab, updateStats, variantTag) ...
 loadData();
