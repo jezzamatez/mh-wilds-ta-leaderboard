@@ -491,6 +491,7 @@ function parseTime(val) {
   const s = val.toString().toLowerCase().trim();
   if (s.includes('dnf') || s === '') return null;
   
+  // Handle Google's internal Date format for durations
   if (s.includes('date')) {
     const parts = s.match(/\d+/g);
     if (parts && parts.length >= 6) {
@@ -539,6 +540,7 @@ async function loadData() {
 
     const paired = {};
     allRuns.forEach(run => {
+      // Create a unique key for each hunt variant
       const key = `${run.variant}-${run.tier}-${run.icon}`.toLowerCase().replace(/\s/g, '');
       if (!paired[key]) {
         paired[key] = { 
@@ -590,6 +592,7 @@ function renderLeaderboard() {
     }
   });
 
+  // Sort by fastest time
   rows.sort((a, b) => (a.bestTime || 999999) - (b.bestTime || 999999));
   
   const content = document.getElementById('mainContent');
@@ -617,8 +620,14 @@ function renderH2H() {
   });
   document.getElementById('mainContent').innerHTML = `
     <div class="h2h-grid">
-      <div class="h2h-card"><div class="h2h-wins" style="color:var(--jeremy)">${jWins}</div><div class="h2h-label">Jeremy</div></div>
-      <div class="h2h-card"><div class="h2h-wins" style="color:var(--matt)">${mWins}</div><div class="h2h-label">Matt</div></div>
+      <div class="h2h-card">
+        <div class="h2h-wins" style="color:var(--jeremy)">${jWins}</div>
+        <div class="h2h-label">Jeremy</div>
+      </div>
+      <div class="h2h-card">
+        <div class="h2h-wins" style="color:var(--matt)">${mWins}</div>
+        <div class="h2h-label">Matt</div>
+      </div>
     </div>`;
 }
 
@@ -658,106 +667,12 @@ function switchTab(tab, el) {
 }
 
 function setFilter(type, val, el) {
-  document.querySelectorAll(`.filters button[onclick*="'${type}'"]`).forEach(b => b.classList.remove('active'));
+  // Clear other active buttons in the same filter group
+  const parent = el.parentElement;
+  parent.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
   filters[type] = val;
   renderTab();
-}
-
-function variantTag(variant) {
-  const v = (variant||'').toLowerCase();
-  let cls = v === 'tempered' ? 'vt-tempered' : v === 'frenzied' ? 'vt-frenzied' : v === 'alpha' ? 'vt-alpha' : 'vt-base';
-  return `<span class="variant-tag ${cls}">${variant || 'Base'}</span>`;
-}
-
-// ... Keep your existing UI functions (switchTab, renderTab, etc.) below this ...
-function getFilteredHunts() {
-  let hunts = window._hunts || [];
-  if (filters.variant !== 'all') hunts = hunts.filter(h => h.variant === filters.variant);
-  return hunts;
-}
-
-function switchTab(tab, el) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  currentTab = tab;
-  renderTab();
-}
-
-function setFilter(type, val, el) {
-  document.querySelectorAll('.filter-btn').forEach(b => {
-    if (b.getAttribute('onclick') && b.getAttribute('onclick').includes(`'${type}'`)) {
-      b.classList.remove('active');
-    }
-  });
-  el.classList.add('active');
-  filters[type] = val;
-  renderTab();
-}
-
-function renderTab() {
-  if (currentTab === 'leaderboard') renderLeaderboard();
-  else if (currentTab === 'h2h') renderH2H();
-  else renderMonsters();
-}
-
-function renderLeaderboard() {
-  const hunts = getFilteredHunts();
-  const playerFilter = filters.player;
-  let rows = [];
-  hunts.forEach(h => {
-    if ((playerFilter === 'all' || playerFilter === 'Jeremy') && h.jeremy) rows.push({ ...h.jeremy, playerName: 'Jeremy', hunt: h });
-    if ((playerFilter === 'all' || playerFilter === 'Matt') && h.matt) rows.push({ ...h.matt, playerName: 'Matt', hunt: h });
-  });
-
-  rows.sort((a, b) => (a.bestTime || 999999) - (b.bestTime || 999999));
-  const content = document.getElementById('mainContent');
-  let html = `<div class="board-wrap"><table><thead><tr><th>#</th><th>Hunt</th><th>Player</th><th class="num">Time</th></tr></thead><tbody>`;
-  
-  rows.forEach((r, i) => {
-    html += `<tr>
-      <td>${i+1}</td>
-      <td>${r.hunt.monsterName} ${variantTag(r.variant)}</td>
-      <td>${r.playerName}</td>
-      <td class="num">${formatTime(r.bestTime)}</td>
-    </tr>`;
-  });
-  content.innerHTML = html + '</tbody></table></div>';
-}
-
-function renderH2H() {
-  const hunts = getFilteredHunts();
-  let jWins = 0, mWins = 0;
-  hunts.forEach(h => {
-    if (h.jeremy?.bestTime && h.matt?.bestTime) {
-      if (h.jeremy.bestTime < h.matt.bestTime) jWins++;
-      else if (h.matt.bestTime < h.jeremy.bestTime) mWins++;
-    }
-  });
-  document.getElementById('mainContent').innerHTML = `
-    <div class="h2h-grid">
-      <div class="h2h-card"><div class="h2h-wins">${jWins}</div><div class="h2h-label">Jeremy</div></div>
-      <div class="h2h-card"><div class="h2h-wins">${mWins}</div><div class="h2h-label">Matt</div></div>
-    </div>`;
-}
-
-function renderMonsters() {
-  const hunts = getFilteredHunts();
-  let html = '<div class="monster-grid">';
-  hunts.forEach(h => {
-    html += `<div class="monster-card">
-      <div class="mc-header"><div class="mc-title">${h.monsterName}</div></div>
-      <div class="mc-row">Jeremy: ${formatTime(h.jeremy?.bestTime)}</div>
-      <div class="mc-row">Matt: ${formatTime(h.matt?.bestTime)}</div>
-    </div>`;
-  });
-  document.getElementById('mainContent').innerHTML = html + '</div>';
-}
-
-function updateStats() {
-  const hunts = window._hunts || [];
-  document.getElementById('jeremyCount').textContent = hunts.filter(h => h.jeremy?.bestTime).length;
-  document.getElementById('mattCount').textContent = hunts.filter(h => h.matt?.bestTime).length;
 }
 
 function variantTag(variant) {
