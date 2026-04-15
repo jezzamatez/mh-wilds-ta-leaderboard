@@ -139,43 +139,59 @@ async function loadData() {
     const monsterRows = parseCSV(monsterRes);
     const weaponRows = parseCSV(weaponRes);
 
+    // --- Build lookup maps ---
     const monsterMap = {};
     monsterRows.slice(1).forEach(r => {
-      if (r[0] && r[1]) monsterMap[r[0]] = r[1];
+      if (r[0] && r[1]) monsterMap[r[0].trim()] = r[1];
     });
 
     const weaponMap = {};
     weaponRows.slice(1).forEach(r => {
-      if (r[0] && r[1]) weaponMap[r[0]] = r[1];
+      if (r[0] && r[1]) weaponMap[r[0].trim()] = r[1];
     });
+
+    // --- HEADER-BASED COLUMN MAPPING (THIS IS THE FIX) ---
+    const headers = runRows[0].map(h => h.trim().toLowerCase());
+
+    function col(name) {
+      return headers.indexOf(name.toLowerCase());
+    }
+
+    const colPlayer = col('player');
+    const colMonster = col('monster');
+    const colWeapon = col('weapon');
+    const colVariant = col('variant');
+    const colTime = col('time') !== -1 ? col('time') : col('best time');
 
     allRuns = [];
 
     runRows.slice(1).forEach(row => {
-      if (!row[3]) return;
+      const player = row[colPlayer];
+      if (!player) return;
 
-      const mName = row[1] || 'Unknown';
-      const wName = row[4] || 'Unknown';
+      const mName = row[colMonster] || 'Unknown';
+      const wName = row[colWeapon] || 'Unknown';
 
       allRuns.push({
-        variant: row[0] || 'Base',
+        variant: row[colVariant] || 'Base',
         monsterName: mName,
         monsterIcon: monsterMap[mName] || '👾',
-        player: row[3],
+        player: player,
         weaponName: wName,
         weaponIcon: weaponMap[wName] || '⚔️',
-        bestTime: parseTime(row[8])
+        bestTime: parseTime(row[colTime])
       });
     });
 
     window._hunts = pairHunts(allRuns);
+
     updateStats();
     renderTab();
 
     document.getElementById('lastUpdated').textContent =
       `Live Sync: ${new Date().toLocaleTimeString()}`;
 
-  } catch(e) {
+  } catch (e) {
     console.error("Critical Load Error:", e);
     content.innerHTML = `<div class="error"><b>Sync Error:</b> ${e.message}</div>`;
   }
