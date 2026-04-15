@@ -581,7 +581,6 @@ function renderTab() {
 
 function renderLeaderboard() {
   const hunts = getFilteredHunts();
-  const playerFilter = filters.player;
   const content = document.getElementById('mainContent');
   
   let html = `<div class="board-wrap"><table><thead><tr><th>Icon</th><th>Hunt</th><th>Jeremy</th><th>Matt</th></tr></thead><tbody>`;
@@ -660,7 +659,6 @@ function variantTag(variant) {
   let cls = v === 'tempered' ? 'vt-tempered' : v === 'frenzied' ? 'vt-frenzied' : v === 'alpha' ? 'vt-alpha' : 'vt-base';
   return `<span class="variant-tag ${cls}">${variant || 'Base'}</span>`;
 }
-
 
 // ... Rest of your UI functions (switchTab, updateStats, variantTag) ...
 loadData();
