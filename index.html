@@ -511,41 +511,58 @@ function formatTime(secs) {
 
 async function loadData() {
   const content = document.getElementById('mainContent');
-  document.getElementById('lastUpdated').textContent = 'Syncing...';
-
   try {
     const rows = await fetchJSON();
     allRuns = [];
 
-    rows.forEach((row) => {
+    rows.forEach((row, index) => {
       const cells = row.c;
+      // Skip if row is empty or player column (Index 4) is missing
       if (!cells || !cells[4]) return;
 
-      allRuns.push({
-        variant: cells[0]?.v || 'Base',
-        tier: cells[1]?.v || '',
-        icon: cells[2]?.v || '', // This captures icon text/URLs
-        player: cells[4]?.v,
-        bestTime: parseTime(cells[13]?.v)
-      });
+      // Extract values safely, checking both .v (value) and .f (formatted string)
+      const player = cells[4]?.v || cells[4]?.f || '';
+      const timeStr = cells[13]?.f || cells[13]?.v || ''; // Grand Total is Index 13
+      const variant = cells[0]?.v || cells[0]?.f || 'Base';
+      const tier = cells[1]?.v || cells[1]?.f || '';
+      const iconData = cells[2]?.f || cells[2]?.v || ''; // Monster Icon Index 2
+
+      if (player) {
+        allRuns.push({
+          variant: variant,
+          tier: tier,
+          icon: iconData,
+          player: player.trim(),
+          bestTime: parseTime(timeStr.toString())
+        });
+      }
     });
 
-    // Pair Jeremy and Matt by Monster/Tier/Icon
+    // Pair Jeremy and Matt
     const paired = {};
     allRuns.forEach(run => {
+      // Create a unique key for each hunt to group the two players together
       const key = `${run.variant}-${run.tier}-${run.icon}`;
-      if (!paired[key]) paired[key] = { monsterName: `${run.variant} ${run.tier}`, icon: run.icon, variant: run.variant };
+      if (!paired[key]) {
+        paired[key] = { 
+          monsterName: `${run.variant} ${run.tier}`.trim(), 
+          icon: run.icon, 
+          variant: run.variant 
+        };
+      }
       if (run.player === 'Jeremy') paired[key].jeremy = run;
       if (run.player === 'Matt') paired[key].matt = run;
     });
 
     window._hunts = Object.values(paired);
+    
+    // Refresh the UI
     updateStats();
     renderTab();
     document.getElementById('lastUpdated').textContent = `Live Sync: ${new Date().toLocaleTimeString()}`;
   } catch(e) {
-    console.error(e);
-    content.innerHTML = `<div class="error">Sync Failed: ${e.message}</div>`;
+    console.error("Data processing error:", e);
+    content.innerHTML = `<div class="error">Data processing failed. Check console (F12).</div>`;
   }
 }
 
