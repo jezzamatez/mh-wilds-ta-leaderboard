@@ -528,7 +528,6 @@ async function loadData() {
       fetch(`${SHEET_BASE}&gid=${GID_WEAPONS}`).then(r => r.text())
     ]);
 
-    // NEW PARSER: This strips the Google wrapper so JSON.parse can work
     const cleanJSON = (txt) => {
       const start = txt.indexOf('{');
       const end = txt.lastIndexOf('}') + 1;
@@ -539,11 +538,38 @@ async function loadData() {
     const monsterRows = cleanJSON(monsterRes).table.rows;
     const weaponRows = cleanJSON(weaponRes).table.rows;
 
-    // Proceed with your mapping logic...
     const monsterMap = {};
     monsterRows.forEach(r => { if(r.c[0] && r.c[1]) monsterMap[r.c[0].v] = r.c[1].v; });
     
-    // ... rest of the code
+    const weaponMap = {};
+    weaponRows.forEach(r => { if(r.c[0] && r.c[1]) weaponMap[r.c[0].v] = r.c[1].v; });
+
+    allRuns = [];
+    runRows.forEach(row => {
+      const cells = row.c;
+      if (!cells || !cells[3] || !cells[3].v) return;
+      const mName = cells[1]?.v || 'Unknown';
+      const wName = cells[4]?.v || 'Unknown';
+      allRuns.push({
+        variant: cells[0]?.v || 'Base',
+        monsterName: mName,
+        monsterIcon: monsterMap[mName] || '👾',
+        player: cells[3]?.v || '',
+        weaponName: wName,
+        weaponIcon: weaponMap[wName] || '⚔️',
+        bestTime: parseTime(cells[8]?.v || cells[8]?.f)
+      });
+    });
+
+    window._hunts = pairHunts(allRuns);
+    updateStats();
+    renderTab();
+    document.getElementById('lastUpdated').textContent = `Live Sync: ${new Date().toLocaleTimeString()}`;
+  } catch(e) {
+    console.error(e);
+    content.innerHTML = `<div class="error"><b>Sync Error:</b> ${e.message}</div>`;
+  }
+}
 
 function renderLeaderboard() {
   const hunts = getFilteredHunts();
@@ -551,7 +577,7 @@ function renderLeaderboard() {
   let rows = [];
   hunts.forEach(h => {
     if ((playerFilter === 'all' || playerFilter === 'Jeremy') && h.jeremy) rows.push({ ...h.jeremy, playerName: 'Jeremy', hunt: h });
-    if ((playerFilter === 'all' || playerFilter === 'Matt') && h.matt) rows.push({ ...h.matt, playerName: 'Matt', hunt: h });
+    if ((playerFilter === 'all' || playerFilter || 'Matt') && h.matt) rows.push({ ...h.matt, playerName: 'Matt', hunt: h });
   });
   rows.sort((a, b) => (a.bestTime || 999999) - (b.bestTime || 999999));
   
