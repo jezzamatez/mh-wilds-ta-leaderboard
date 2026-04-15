@@ -536,11 +536,16 @@ async function loadData() {
     parse(weaponRes).forEach(r => { if(r.c[0] && r.c[1]) weaponMap[r.c[0].v] = r.c[1].v; });
 
     allRuns = [];
-    runRows.forEach(row => {
+    runRows.forEach((row, index) => {
       const cells = row.c;
-      if (!cells || !cells[3]) return;
+      // DEBUG: Uncomment the line below to see the raw row data in your browser console
+      // console.log(`Row ${index}:`, cells);
+
+      if (!cells || !cells[3] || !cells[3].v) return; // Skips rows with no Player Name
+
       const mName = cells[1]?.v || 'Unknown';
       const wName = cells[4]?.v || 'Unknown';
+
       allRuns.push({
         variant: cells[0]?.v || 'Base',
         monsterName: mName,
