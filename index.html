@@ -469,6 +469,7 @@
 </main>
 
 <script>
+// Your direct published CSV link
 const PUBLISHED_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR8i7-4hmloDOdy0JKUAGCJdwGwlsToeFPTucntnVRQ5v4D15LP8sPoAsCidu2LaABWxIw3qHwTjSrF/pub?gid=0&single=true&output=csv';
 const DNF_TIME = 59 * 60;
 
@@ -476,18 +477,17 @@ let allRuns = [];
 let filters = { variant: 'all', player: 'all' };
 let currentTab = 'leaderboard';
 
-// Using a proxy to bypass browser security blocks (CORS)
+// Using a high-availability proxy to ensure cross-origin data loads correctly
 async function fetchCSV() {
-  const proxyUrl = 'https://corsproxy.io/?';
-  const targetUrl = encodeURIComponent(PUBLISHED_CSV_URL);
-  const res = await fetch(proxyUrl + targetUrl);
+  const proxyUrl = 'https://api.allorigins.win/raw?url=';
+  const res = await fetch(proxyUrl + encodeURIComponent(PUBLISHED_CSV_URL));
   
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.text();
 }
 
 function parseCSV(text) {
-  const lines = text.split('\n').map(l => l.replace(/\r/g,''));
+  const lines = text.split('\n').map(l => l.replace(/\r/g,'')).filter(l => l.trim() !== '');
   return lines.map(l => {
     const cells = [];
     let cur = '', inQ = false;
@@ -502,426 +502,94 @@ function parseCSV(text) {
 }
 
 function parseTime(str) {
-  if (!str || str.trim() === '') return null;
+  if (!str || str.trim() === '' || str.toLowerCase().includes('dnf')) return null;
   str = str.trim();
   const m = str.match(/^(\d+):(\d+)\.(\d+)$/);
   if (!m) return null;
   const secs = parseInt(m[1]) * 60 + parseInt(m[2]) + parseInt(m[3]) / 100;
-  if (secs >= DNF_TIME) return null;
-  return secs;
+  return secs >= DNF_TIME ? null : secs;
 }
 
 function formatTime(secs) {
-  if (secs === null) return null;
+  if (secs === null) return 'DNF';
   const m = Math.floor(secs / 60);
-  const s = secs - m * 60;
-  return `${m}:${s.toFixed(2).padStart(5,'0')}`;
+  const s = (secs - m * 60).toFixed(2);
+  return `${m}:${s.toString().padStart(5, '0')}`;
 }
 
 function stars(tier) {
   const n = parseInt(tier);
-  if (isNaN(n)) return tier;
-  return '★'.repeat(n);
+  return isNaN(n) ? tier : '★'.repeat(n);
 }
 
 async function loadData() {
-  document.getElementById('mainContent').innerHTML = '<div class="loading"><div class="spinner"></div>Loading leaderboard data...</div>';
+  const content = document.getElementById('mainContent');
+  content.innerHTML = '<div class="loading"><div class="spinner"></div>Loading leaderboard data...</div>';
   document.getElementById('lastUpdated').textContent = 'Loading...';
 
   try {
     const raw = await fetchCSV();
     const rows = parseCSV(raw);
 
-    // Parse structure: find header rows
-    // Row 4 (index ~3): Variant | Tier | M_Icon | | Player | [weapons...] | | | | | | | | Grand Total
-    // Row 5+: data rows
+    // Locate the header row (usually contains 'Variant' and 'Player')
+    let headerIdx = rows.findIndex(r => r.some(c => c.trim().toLowerCase() === 'variant'));
+    if (headerIdx === -1) throw new Error('Data format incorrect: Could not find header row.');
 
-    let headerRow = null;
-    let dataStartIdx = -1;
-
-    for (let i = 0; i < rows.length; i++) {
-      const r = rows[i];
-      if (r[0] && r[0].trim().toLowerCase() === 'variant') {
-        headerRow = r;
-        dataStartIdx = i + 1;
-        break;
-      }
-    }
-
-    if (!headerRow) throw new Error('Could not find header row');
-
-    // Find weapon columns (columns between Player and Grand Total)
-    const playerCol = headerRow.findIndex(c => c.trim().toLowerCase() === 'player');
-    const totalCol = headerRow.findIndex(c => c.trim().toLowerCase() === 'grand total');
+    const header = rows[headerIdx];
+    const playerCol = header.findIndex(c => c.trim().toLowerCase() === 'player');
+    const totalCol = header.findIndex(c => c.trim().toLowerCase() === 'grand total');
 
     allRuns = [];
     let curVariant = '', curTier = '';
 
-    for (let i = dataStartIdx; i < rows.length; i++) {
+    // Parse data rows starting after the header
+    for (let i = headerIdx + 1; i < rows.length; i++) {
       const r = rows[i];
-      if (!r || r.every(c => !c.trim())) continue;
+      if (!r[playerCol] || r[playerCol].trim() === '') continue;
 
-      const rawVariant = r[0] ? r[0].trim() : '';
-      const rawTier = r[1] ? r[1].trim() : '';
-      const player = r[playerCol] ? r[playerCol].trim() : '';
-
-      if (rawVariant) curVariant = rawVariant;
-      if (rawTier) curTier = rawTier;
-
-      if (!player) continue;
-
-      // Find the best time in weapon columns
-      // Also grab weapon times per column
-      const weaponTimes = [];
-      if (totalCol > 0) {
-        for (let c = playerCol + 1; c < totalCol; c++) {
-          const t = parseTime(r[c]);
-          if (t !== null) weaponTimes.push({ weaponIdx: c - playerCol - 1, time: t });
-        }
-      }
-
-      const grandTotal = totalCol > 0 ? r[totalCol] : '';
-      const bestTime = parseTime(grandTotal);
+      if (r[0] && r[0].trim() !== '') curVariant = r[0].trim();
+      if (r[1] && r[1].trim() !== '') curTier = r[1].trim();
 
       allRuns.push({
         variant: curVariant || 'Base',
         tier: curTier,
-        player,
-        bestTime,
-        weaponTimes,
-        rowIdx: i,
+        player: r[playerCol].trim(),
+        bestTime: parseTime(r[totalCol]),
+        rowIdx: i
       });
     }
 
-    // Try to extract monster names from MonsterInfo sheet
-    // For now, group by variant+tier as monster identifier
-    // Since we can't get monster names easily, create readable labels
-    // Group consecutive rows with same variant+tier into monster groups
-    const groups = [];
-    let g = null;
-    let monsterCount = {};
-    allRuns.forEach(run => {
-      const key = run.variant + '|' + run.tier;
-      if (!g || g.key !== key) {
-        g = { key, variant: run.variant, tier: run.tier, runs: [] };
-        groups.push(g);
-      }
-      g.runs.push(run);
-    });
-
-    // Assign monster indices within each variant+tier
-    const variantTierIdx = {};
-    allRuns.forEach(run => {
-      const key = run.variant + '|' + run.tier;
-      // Each pair of Jeremy/Matt rows is one "hunt"
-    });
-
-    // Pair up Jeremy/Matt for same variant/tier/hunt
-    const hunts = [];
-    let huntMap = {};
-    let pairBuffer = {};
-    allRuns.forEach((run, i) => {
-      const key = run.variant + '|' + run.tier + '|' + run.rowIdx;
-      // Find partner: adjacent rows with same variant+tier
-    });
-
-    // Simpler: just use rows as-is, group by pairs
-    const pairedHunts = [];
+    // Pair Jeremy and Matt by their row order
+    window._hunts = [];
     for (let i = 0; i < allRuns.length; i += 2) {
-      const a = allRuns[i];
-      const b = allRuns[i+1];
-      if (!b) { pairedHunts.push({ jeremy: null, matt: null, ...( a.player === 'Jeremy' ? { jeremy: a } : { matt: a }) }); continue; }
-      const jeremy = a.player === 'Jeremy' ? a : b;
-      const matt = a.player === 'Matt' ? a : b;
-      pairedHunts.push({ jeremy, matt, variant: jeremy.variant, tier: jeremy.tier });
+      const p1 = allRuns[i];
+      const p2 = allRuns[i+1];
+      const jeremy = p1.player === 'Jeremy' ? p1 : (p2 && p2.player === 'Jeremy' ? p2 : null);
+      const matt = p1.player === 'Matt' ? p1 : (p2 && p2.player === 'Matt' ? p2 : null);
+      
+      const variant = (jeremy || matt).variant;
+      const tier = (jeremy || matt).tier;
+      
+      window._hunts.push({
+        id: i / 2,
+        monsterName: `${variant} ${tier} #${(i/2) + 1}`,
+        variant,
+        tier,
+        jeremy,
+        matt
+      });
     }
 
-    // Assign human-readable monster names per variant+tier group
-    const monsterNames = buildMonsterNames(pairedHunts);
-    pairedHunts.forEach((h, i) => { h.monsterName = monsterNames[i]; h.id = i; });
-    allRuns.forEach((r, i) => { r.huntId = Math.floor(i/2); });
-
-    window._hunts = pairedHunts;
     updateStats();
     renderTab();
-
-    const now = new Date();
-    document.getElementById('lastUpdated').textContent = `Updated ${now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`;
+    document.getElementById('lastUpdated').textContent = `Updated ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
   } catch(e) {
     console.error(e);
-    document.getElementById('mainContent').innerHTML = `<div class="error">Failed to load data.<br><small>${e.message}</small><br><br>Make sure the sheet is shared publicly (Anyone with link → Viewer).</div>`;
-    document.getElementById('lastUpdated').textContent = 'Error';
+    content.innerHTML = `<div class="error">Failed to load data.<br><small>${e.message}</small></div>`;
   }
 }
 
-function buildMonsterNames(hunts) {
-  // We don't have monster names from the sheet yet, so use numbered format
-  // grouped by variant+tier
-  const variantTierCounts = {};
-  return hunts.map(h => {
-    const vt = h.variant + '|' + h.tier;
-    variantTierCounts[vt] = (variantTierCounts[vt] || 0) + 1;
-    return `${h.variant} ${h.tier} #${variantTierCounts[vt]}`;
-  });
-}
-
-function updateStats() {
-  const hunts = window._hunts || [];
-  const jCount = hunts.filter(h => h.jeremy && h.jeremy.bestTime !== null).length;
-  const mCount = hunts.filter(h => h.matt && h.matt.bestTime !== null).length;
-  document.getElementById('jeremyCount').textContent = jCount;
-  document.getElementById('mattCount').textContent = mCount;
-}
-
-function getFilteredHunts() {
-  let hunts = window._hunts || [];
-  if (filters.variant !== 'all') hunts = hunts.filter(h => h.variant === filters.variant);
-  return hunts;
-}
-
-function switchTab(tab, el) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  currentTab = tab;
-  renderTab();
-}
-
-function setFilter(type, val, el) {
-  const group = el.parentElement.querySelectorAll('.filter-btn');
-  // Find siblings in same filter group
-  const allBtns = document.querySelectorAll('.filter-btn');
-  // Determine group by filter-label before this button
-  let inGroup = false;
-  let currentLabel = '';
-  document.querySelectorAll('.filters > *').forEach(child => {
-    if (child.classList.contains('filter-label')) currentLabel = child.textContent.toLowerCase().trim();
-    if (child === el) inGroup = true;
-  });
-
-  // Just deactivate buttons in same type group
-  document.querySelectorAll('.filter-btn').forEach(b => {
-    if (b.getAttribute('onclick') && b.getAttribute('onclick').includes(`'${type}'`)) {
-      b.classList.remove('active');
-    }
-  });
-  el.classList.add('active');
-  filters[type] = val;
-  renderTab();
-}
-
-function renderTab() {
-  if (currentTab === 'leaderboard') renderLeaderboard();
-  else if (currentTab === 'h2h') renderH2H();
-  else renderMonsters();
-}
-
-function renderLeaderboard() {
-  const hunts = getFilteredHunts();
-  const playerFilter = filters.player;
-
-  // Build flat best times
-  let rows = [];
-  hunts.forEach(h => {
-    const addPlayer = (run, player) => {
-      if (!run) return;
-      if (playerFilter !== 'all' && player !== playerFilter) return;
-      rows.push({ ...run, playerName: player, hunt: h });
-    };
-    addPlayer(h.jeremy, 'Jeremy');
-    addPlayer(h.matt, 'Matt');
-  });
-
-  // Sort: completed first (by time asc), then DNF
-  rows.sort((a, b) => {
-    if (a.bestTime !== null && b.bestTime !== null) return a.bestTime - b.bestTime;
-    if (a.bestTime !== null) return -1;
-    if (b.bestTime !== null) return 1;
-    return 0;
-  });
-
-  const completed = rows.filter(r => r.bestTime !== null);
-  const dnf = rows.filter(r => r.bestTime === null);
-
-  const content = document.getElementById('mainContent');
-  if (!rows.length) { content.innerHTML = '<div class="empty">No data matches your filters.</div>'; return; }
-
-  const bestTime = completed.length ? completed[0].bestTime : null;
-
-  let html = `<div class="section-header"><span class="section-title">Rankings</span><span class="count-badge">${completed.length} completed · ${dnf.length} DNF</span></div>`;
-  html += `<div class="board-wrap"><table>
-    <thead><tr>
-      <th style="width:40px">#</th>
-      <th>Hunt</th>
-      <th>Player</th>
-      <th class="num">Best Time</th>
-      <th class="num">vs Leader</th>
-    </tr></thead><tbody>`;
-
-  completed.forEach((r, i) => {
-    const rankClass = i===0?'r1':i===1?'r2':i===2?'r3':'';
-    const varTag = variantTag(r.hunt.variant);
-    const diff = r.bestTime - bestTime;
-    const diffStr = i === 0 ? '<span style="color:var(--gold)">★ Best</span>' : `+${formatTime(diff)}`;
-    html += `<tr>
-      <td><div class="rank ${rankClass}">${i+1}</div></td>
-      <td>
-        <div class="monster-name">${r.hunt.monsterName || '—'} ${varTag}</div>
-        <div class="meta">${r.tier ? stars(r.tier) + ' ' + r.tier : ''}</div>
-      </td>
-      <td><span class="player-pill pp-${r.playerName.toLowerCase()}"><span class="pp-dot"></span>${r.playerName}</span></td>
-      <td class="num"><span class="time best">${formatTime(r.bestTime)}</span></td>
-      <td class="num"><span class="diff">${diffStr}</span></td>
-    </tr>`;
-  });
-
-  if (dnf.length && playerFilter === 'all') {
-    html += `<tr><td colspan="5" style="padding:6px 16px;background:var(--surface2)"><span style="font-size:11px;color:var(--muted);letter-spacing:0.5px;text-transform:uppercase">DNF / Not Yet Cleared</span></td></tr>`;
-    dnf.slice(0, 10).forEach(r => {
-      const varTag = variantTag(r.hunt.variant);
-      html += `<tr>
-        <td><div class="rank">—</div></td>
-        <td><div class="monster-name">${r.hunt.monsterName || '—'} ${varTag}</div><div class="meta">${r.tier ? stars(r.tier) + ' ' + r.tier : ''}</div></td>
-        <td><span class="player-pill pp-${r.playerName.toLowerCase()}"><span class="pp-dot"></span>${r.playerName}</span></td>
-        <td class="num"><span class="time dnf">DNF</span></td>
-        <td class="num">—</td>
-      </tr>`;
-    });
-    if (dnf.length > 10) html += `<tr><td colspan="5" style="text-align:center;padding:10px;font-size:12px;color:var(--muted)">…and ${dnf.length-10} more DNFs</td></tr>`;
-  }
-
-  html += '</tbody></table></div>';
-  content.innerHTML = html;
-}
-
-function renderH2H() {
-  const hunts = getFilteredHunts();
-  let jWins = 0, mWins = 0, ties = 0;
-  let jTotal = 0, mTotal = 0, jCount = 0, mCount = 0;
-
-  const matchups = hunts.map(h => {
-    const jt = h.jeremy?.bestTime ?? null;
-    const mt = h.matt?.bestTime ?? null;
-    let winner = null;
-    if (jt !== null && mt !== null) {
-      if (jt < mt) { jWins++; winner = 'Jeremy'; }
-      else if (mt < jt) { mWins++; winner = 'Matt'; }
-      else { ties++; winner = 'tie'; }
-    }
-    if (jt !== null) { jTotal += jt; jCount++; }
-    if (mt !== null) { mTotal += mt; mCount++; }
-    return { h, jt, mt, winner };
-  });
-
-  const content = document.getElementById('mainContent');
-  let html = '';
-
-  html += `<div class="h2h-grid">
-    <div class="h2h-card">
-      <div class="h2h-wins" style="color:var(--jeremy)">${jWins}</div>
-      <div class="h2h-label" style="color:var(--jeremy)">Jeremy wins</div>
-      ${jCount ? `<div style="margin-top:8px;font-size:12px;color:var(--muted)">Avg: ${formatTime(jTotal/jCount)}</div>` : ''}
-    </div>
-    <div class="h2h-card">
-      <div class="h2h-wins" style="color:var(--matt)">${mWins}</div>
-      <div class="h2h-label" style="color:var(--matt)">Matt wins</div>
-      ${mCount ? `<div style="margin-top:8px;font-size:12px;color:var(--muted)">Avg: ${formatTime(mTotal/mCount)}</div>` : ''}
-    </div>
-  </div>
-  ${ties ? `<div style="text-align:center;margin-bottom:16px;font-size:12px;color:var(--muted)">${ties} tie${ties>1?'s':''}</div>` : ''}`;
-
-  const contested = matchups.filter(m => m.jt !== null && m.mt !== null);
-  if (contested.length) {
-    html += `<div class="section-header"><span class="section-title">Direct Matchups</span><span class="count-badge">${contested.length} hunts</span></div>`;
-    html += `<div class="board-wrap"><table>
-      <thead><tr>
-        <th>Hunt</th>
-        <th class="num" style="color:var(--jeremy)">Jeremy</th>
-        <th class="num" style="color:var(--matt)">Matt</th>
-        <th class="num">Diff</th>
-      </tr></thead><tbody>`;
-    contested.sort((a, b) => {
-      const aBest = Math.min(a.jt, a.mt);
-      const bBest = Math.min(b.jt, b.mt);
-      return aBest - bBest;
-    });
-    contested.forEach(({ h, jt, mt, winner }) => {
-      const diff = Math.abs(jt - mt);
-      const jWon = winner === 'Jeremy';
-      const mWon = winner === 'Matt';
-      html += `<tr>
-        <td><div class="monster-name">${h.monsterName} ${variantTag(h.variant)}</div></td>
-        <td class="num"><span class="time" style="${jWon?'color:var(--jeremy)':''}">${formatTime(jt)}</span> ${jWon?'◀':''}</td>
-        <td class="num"><span class="time" style="${mWon?'color:var(--matt)':''}">${formatTime(mt)}</span> ${mWon?'◀':''}</td>
-        <td class="num"><span class="diff">${winner==='tie'?'tie':'+'+formatTime(diff)}</span></td>
-      </tr>`;
-    });
-    html += '</tbody></table></div>';
-  }
-
-  content.innerHTML = html;
-}
-
-function renderMonsters() {
-  const hunts = getFilteredHunts();
-  const playerFilter = filters.player;
-  const content = document.getElementById('mainContent');
-
-  let html = `<div class="section-header"><span class="section-title">All Hunts</span><span class="count-badge">${hunts.length} total</span></div>`;
-  html += `<div class="monster-grid">`;
-
-  hunts.forEach(h => {
-    const jt = h.jeremy?.bestTime ?? null;
-    const mt = h.matt?.bestTime ?? null;
-    const jDone = jt !== null;
-    const mDone = mt !== null;
-    const leader = (jt !== null && mt !== null) ? (jt < mt ? 'jeremy' : mt < jt ? 'matt' : 'tie') : null;
-
-    if (playerFilter === 'Jeremy' && !jDone) return;
-    if (playerFilter === 'Matt' && !mDone) return;
-
-    html += `<div class="monster-card">
-      <div class="mc-header">
-        <div class="mc-title">${h.monsterName}</div>
-        <div class="mc-tier">${variantTag(h.variant)} ${h.tier ? '★'.repeat(parseInt(h.tier)||0) : ''}</div>
-      </div>
-      <div class="mc-times">`;
-
-    if (playerFilter !== 'Matt') {
-      html += `<div class="mc-row">
-        <div class="mc-player"><div class="mc-dot" style="background:var(--jeremy)"></div><span style="font-size:12px;color:var(--muted)">Jeremy</span></div>
-        <div style="display:flex;align-items:center;gap:6px">
-          ${leader==='jeremy'?'<span style="font-size:10px;color:var(--gold)">★</span>':''}
-          <span class="${jDone?'time':'time dnf'}">${jDone?formatTime(jt):'DNF'}</span>
-        </div>
-      </div>`;
-    }
-    if (playerFilter !== 'Jeremy') {
-      html += `<div class="mc-row">
-        <div class="mc-player"><div class="mc-dot" style="background:var(--matt)"></div><span style="font-size:12px;color:var(--muted)">Matt</span></div>
-        <div style="display:flex;align-items:center;gap:6px">
-          ${leader==='matt'?'<span style="font-size:10px;color:var(--gold)">★</span>':''}
-          <span class="${mDone?'time':'time dnf'}">${mDone?formatTime(mt):'DNF'}</span>
-        </div>
-      </div>`;
-    }
-
-    html += `</div></div>`;
-  });
-
-  html += '</div>';
-  content.innerHTML = html;
-}
-
-function variantTag(variant) {
-  const v = (variant||'').toLowerCase();
-  let cls = 'vt-base', label = variant || 'Base';
-  if (v === 'tempered') cls = 'vt-tempered';
-  else if (v === 'frenzied') cls = 'vt-frenzied';
-  else if (v === 'alpha') cls = 'vt-alpha';
-  return `<span class="variant-tag ${cls}">${label}</span>`;
-}
-
-loadData();
+// ... Keep your existing UI functions (switchTab, renderTab, etc.) below this ...
 </script>
 </body>
 </html>
