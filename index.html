@@ -491,7 +491,6 @@ function parseTime(val) {
   const s = val.toString().toLowerCase().trim();
   if (s.includes('dnf') || s === '') return null;
   
-  // Handle Google's internal Date format: Date(1899,11,30,0,5,12)
   if (s.includes('date')) {
     const parts = s.match(/\d+/g);
     if (parts && parts.length >= 6) {
@@ -503,10 +502,7 @@ function parseTime(val) {
 
   const m = s.match(/^(\d+):(\d+)(\.\d+)?$/);
   if (!m) return null;
-  const mins = parseInt(m[1]);
-  const secs = parseInt(m[2]);
-  const ms = m[3] ? parseFloat(m[3]) : 0;
-  return (mins * 60) + secs + ms;
+  return (parseInt(m[1]) * 60) + parseInt(m[2]) + (m[3] ? parseFloat(m[3]) : 0);
 }
 
 function formatTime(secs) {
@@ -522,16 +518,9 @@ async function loadData() {
 
   try {
     const rows = await fetchJSON();
-    if (!rows || rows.length === 0) throw new Error("No data found in sheet.");
+    if (!rows || rows.length === 0) throw new Error("No data found.");
 
     allRuns = [];
-    
-    // Mapping based on your 'Found' error message:
-    // Col 0: Variant ("Tempered")
-    // Col 1: Tier ("5★")
-    // Col 3: Player ("Jeremy")
-    // Col 8: Grand Total ("Date(...)")
-    
     rows.forEach(row => {
       const cells = row.c;
       if (!cells || !cells[3]) return;
@@ -539,20 +528,18 @@ async function loadData() {
       const playerName = (cells[3]?.v || cells[3]?.f || '').toString().trim();
       if (!playerName) return;
 
-      const timeRaw = cells[8]?.v || cells[8]?.f || '';
-
       allRuns.push({
         variant: cells[0]?.v || 'Base',
         tier: cells[1]?.v || '',
-        icon: '👾', // Default icon as Col 2 was empty in your snippet
+        icon: cells[2]?.v || '👾',
         player: playerName,
-        bestTime: parseTime(timeRaw)
+        bestTime: parseTime(cells[8]?.v || cells[8]?.f)
       });
     });
 
     const paired = {};
     allRuns.forEach(run => {
-      const key = `${run.variant}-${run.tier}`.toLowerCase().replace(/\s/g, '');
+      const key = `${run.variant}-${run.tier}-${run.icon}`.toLowerCase().replace(/\s/g, '');
       if (!paired[key]) {
         paired[key] = { 
           monsterName: `${run.variant} ${run.tier}`.trim(), 
@@ -566,23 +553,20 @@ async function loadData() {
     });
 
     window._hunts = Object.values(paired);
-    
-    if (window._hunts.length === 0) {
-      content.innerHTML = `<div class="empty">Connection successful, but no runs found for Jeremy or Matt.</div>`;
-    } else {
-      updateStats();
-      renderTab();
-      document.getElementById('lastUpdated').textContent = `Live Sync: ${new Date().toLocaleTimeString()}`;
-    }
+    updateStats();
+    renderTab();
+    document.getElementById('lastUpdated').textContent = `Live Sync: ${new Date().toLocaleTimeString()}`;
   } catch(e) {
-    console.error("Load Error:", e);
+    console.error(e);
     content.innerHTML = `<div class="error"><b>Sync Error:</b> ${e.message}</div>`;
   }
 }
 
 function getFilteredHunts() {
   let hunts = window._hunts || [];
-  if (filters.variant !== 'all') hunts = hunts.filter(h => h.variant === filters.variant);
+  if (filters.variant !== 'all') {
+    hunts = hunts.filter(h => h.variant.toLowerCase() === filters.variant.toLowerCase());
+  }
   return hunts;
 }
 
@@ -594,13 +578,29 @@ function renderTab() {
 
 function renderLeaderboard() {
   const hunts = getFilteredHunts();
-  const content = document.getElementById('mainContent');
-  let html = `<div class="board-wrap"><table><thead><tr><th>Hunt</th><th>Jeremy</th><th>Matt</th></tr></thead><tbody>`;
+  const playerFilter = filters.player;
+  let rows = [];
+
   hunts.forEach(h => {
+    if ((playerFilter === 'all' || playerFilter === 'Jeremy') && h.jeremy) {
+        rows.push({ ...h.jeremy, playerName: 'Jeremy', hunt: h });
+    }
+    if ((playerFilter === 'all' || playerFilter === 'Matt') && h.matt) {
+        rows.push({ ...h.matt, playerName: 'Matt', hunt: h });
+    }
+  });
+
+  rows.sort((a, b) => (a.bestTime || 999999) - (b.bestTime || 999999));
+  
+  const content = document.getElementById('mainContent');
+  let html = `<div class="board-wrap"><table><thead><tr><th>#</th><th>Hunt</th><th>Player</th><th class="num">Time</th></tr></thead><tbody>`;
+  
+  rows.forEach((r, i) => {
     html += `<tr>
-      <td><span class="monster-name">${h.monsterName}</span> ${variantTag(h.variant)}</td>
-      <td class="num" style="color:var(--jeremy)">${formatTime(h.jeremy?.bestTime)}</td>
-      <td class="num" style="color:var(--matt)">${formatTime(h.matt?.bestTime)}</td>
+      <td>${i+1}</td>
+      <td>${r.hunt.icon} <span class="monster-name">${r.hunt.monsterName}</span> ${variantTag(r.variant)}</td>
+      <td><span class="player-pill pp-${r.playerName.toLowerCase()}"><span class="pp-dot"></span>${r.playerName}</span></td>
+      <td class="num time">${formatTime(r.bestTime)}</td>
     </tr>`;
   });
   content.innerHTML = html + '</tbody></table></div>';
@@ -628,10 +628,12 @@ function renderMonsters() {
   hunts.forEach(h => {
     html += `<div class="monster-card">
       <div class="mc-header">
-          <div class="mc-title">${h.monsterName}</div>
+          <div class="mc-title">${h.icon} ${h.monsterName}</div>
       </div>
-      <div class="mc-row">Jeremy: <b>${formatTime(h.jeremy?.bestTime)}</b></div>
-      <div class="mc-row">Matt: <b>${formatTime(h.matt?.bestTime)}</b></div>
+      <div class="mc-times">
+        <div class="mc-row">Jeremy: <b>${formatTime(h.jeremy?.bestTime)}</b></div>
+        <div class="mc-row">Matt: <b>${formatTime(h.matt?.bestTime)}</b></div>
+      </div>
     </div>`;
   });
   document.getElementById('mainContent').innerHTML = html + '</div>';
@@ -639,8 +641,13 @@ function renderMonsters() {
 
 function updateStats() {
   const hunts = window._hunts || [];
-  document.getElementById('jeremyCount').textContent = hunts.filter(h => h.jeremy?.bestTime).length;
-  document.getElementById('mattCount').textContent = hunts.filter(h => h.matt?.bestTime).length;
+  let jCount = 0, mCount = 0;
+  hunts.forEach(h => {
+    if (h.jeremy?.bestTime) jCount++;
+    if (h.matt?.bestTime) mCount++;
+  });
+  document.getElementById('jeremyCount').textContent = jCount;
+  document.getElementById('mattCount').textContent = mCount;
 }
 
 function switchTab(tab, el) {
@@ -651,11 +658,7 @@ function switchTab(tab, el) {
 }
 
 function setFilter(type, val, el) {
-  document.querySelectorAll('.filter-btn').forEach(b => {
-    if (b.getAttribute('onclick') && b.getAttribute('onclick').includes(`'${type}'`)) {
-      b.classList.remove('active');
-    }
-  });
+  document.querySelectorAll(`.filters button[onclick*="'${type}'"]`).forEach(b => b.classList.remove('active'));
   el.classList.add('active');
   filters[type] = val;
   renderTab();
@@ -666,9 +669,6 @@ function variantTag(variant) {
   let cls = v === 'tempered' ? 'vt-tempered' : v === 'frenzied' ? 'vt-frenzied' : v === 'alpha' ? 'vt-alpha' : 'vt-base';
   return `<span class="variant-tag ${cls}">${variant || 'Base'}</span>`;
 }
-
-// ... Rest of your UI functions (switchTab, updateStats, variantTag) ...
-loadData();
 
 // ... Keep your existing UI functions (switchTab, renderTab, etc.) below this ...
 function getFilteredHunts() {
