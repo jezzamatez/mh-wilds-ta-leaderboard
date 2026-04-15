@@ -18,6 +18,7 @@
       margin-top: 20px;
     }
 
+    /* TOP SCORE */
     .scoreboard {
       display: flex;
       justify-content: center;
@@ -39,6 +40,7 @@
       font-weight: bold;
     }
 
+    /* TABS */
     .tabs {
       display: flex;
       justify-content: center;
@@ -53,6 +55,7 @@
       text-align: center;
       background: #151b28;
       border-radius: 8px;
+      cursor: pointer;
     }
 
     .tab.active {
@@ -60,6 +63,7 @@
       font-weight: bold;
     }
 
+    /* TABLE */
     table {
       width: 90%;
       margin: auto;
@@ -80,19 +84,14 @@
       border-bottom: 1px solid #1c2333;
     }
 
-    .tier-row td {
-      padding-top: 16px;
-      font-weight: bold;
-      color: #ffb347;
-      border-bottom: 1px solid #2a3242;
-    }
-
+    /* FLEX ALIGNMENT */
     .cell-flex {
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
+    /* ICONS */
     .icon {
       width: 26px;
       height: 26px;
@@ -105,6 +104,7 @@
       opacity: 0.9;
     }
 
+    /* PLAYER STYLING */
     .player {
       font-weight: 600;
     }
@@ -117,6 +117,7 @@
       color: #ffb347;
     }
 
+    /* ROW HIGHLIGHT */
     tr.row-jeremy {
       border-left: 3px solid #4ea1ff;
     }
@@ -125,9 +126,11 @@
       border-left: 3px solid #ffb347;
     }
 
+    /* TIME */
     .time {
       font-family: monospace;
       font-weight: 600;
+      letter-spacing: 0.5px;
     }
 
     #lastUpdated {
@@ -174,7 +177,6 @@ let allRuns = [];
 let bestRuns = [];
 
 let monsterIcons = {};
-let monsterTiers = {};
 let weaponIcons = {};
 
 // --- CSV PARSER ---
@@ -257,27 +259,25 @@ async function loadData() {
     const monsterRows = parseCSV(monsterRes);
     const weaponRows = parseCSV(weaponRes);
 
-    // MONSTER DATA (A=tier, B=name, D=icon)
-    monsterIcons = {};
-    monsterTiers = {};
+    // MONSTER ICONS
+    const mHeaders = monsterRows[0].map(h => h.toLowerCase());
+    const mNameCol = mHeaders.indexOf('monster');
+    const mIconCol = mHeaders.indexOf('icon');
 
     monsterRows.slice(1).forEach(r => {
-      const tier = r[0];
-      const name = r[1];
-      const icon = r[3];
-
-      if (name) {
-        const key = name.trim().toLowerCase();
-        monsterIcons[key] = icon;
-        monsterTiers[key] = tier;
+      if (r[mNameCol] && r[mIconCol]) {
+        monsterIcons[r[mNameCol].trim().toLowerCase()] = r[mIconCol];
       }
     });
 
-    // WEAPON DATA (A=name, C=icon)
-    weaponIcons = {};
+    // WEAPON ICONS
+    const wHeaders = weaponRows[0].map(h => h.toLowerCase());
+    const wNameCol = wHeaders.indexOf('weapon') !== -1 ? wHeaders.indexOf('weapon') : 0;
+    const wIconCol = wHeaders.indexOf('icon');
+
     weaponRows.slice(1).forEach(r => {
-      if (r[0] && r[2]) {
-        weaponIcons[r[0].trim().toLowerCase()] = r[2];
+      if (r[wNameCol] && r[wIconCol]) {
+        weaponIcons[r[wNameCol].trim().toLowerCase()] = r[wIconCol];
       }
     });
 
@@ -348,50 +348,35 @@ function renderLeaderboard() {
   document.getElementById('jeremyCount').textContent = jeremyWins;
   document.getElementById('mattCount').textContent = mattWins;
 
-  const grouped = {};
-
-  bestRuns.forEach(r => {
-    const key = r.monster.trim().toLowerCase();
-    const tier = monsterTiers[key] || 'Unknown';
-
-    if (!grouped[tier]) grouped[tier] = [];
-    grouped[tier].push(r);
-  });
-
-  const sortedTiers = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
-
   let html = `<table><thead><tr>
-    <th>Tier</th><th>Monster</th><th>Player</th><th>Weapon</th><th>Time</th>
+    <th>#</th><th>Monster</th><th>Player</th><th>Weapon</th><th>Time</th>
   </tr></thead><tbody>`;
 
-  sortedTiers.forEach(tier => {
-    html += `<tr class="tier-row"><td colspan="5">${tier}</td></tr>`;
+  bestRuns.forEach((r, i) => {
+    const mIcon = monsterIcons[r.monster?.trim().toLowerCase()];
+    const wIcon = weaponIcons[r.weapon?.trim().toLowerCase()];
 
-    grouped[tier].forEach(r => {
-      const mIcon = monsterIcons[r.monster.trim().toLowerCase()];
-      const wIcon = weaponIcons[r.weapon.trim().toLowerCase()];
+    const playerClass = r.player.toLowerCase().includes('jeremy') ? 'jeremy' : 'matt';
 
-      const playerClass = r.player.toLowerCase().includes('jeremy') ? 'jeremy' : 'matt';
-
-      html += `
-        <tr class="row-${playerClass}">
-          <td>${tier}</td>
-          <td><div class="cell-flex">
-            ${mIcon ? `<img src="${mIcon}" class="icon">` : ''}
-            ${r.monster}
-          </div></td>
-          <td class="player ${playerClass}">${r.player}</td>
-          <td><div class="cell-flex">
-            ${wIcon ? `<img src="${wIcon}" class="icon weapon">` : ''}
-            ${r.weapon}
-          </div></td>
-          <td class="time">${formatTime(r.bestTime)}</td>
-        </tr>
-      `;
-    });
+    html += `
+      <tr class="row-${playerClass}">
+        <td>${i + 1}</td>
+        <td><div class="cell-flex">
+          ${mIcon ? `<img src="${mIcon}" class="icon">` : ''}
+          ${r.monster}
+        </div></td>
+        <td class="player ${playerClass}">${r.player}</td>
+        <td><div class="cell-flex">
+          ${wIcon ? `<img src="${wIcon}" class="icon weapon">` : ''}
+          ${r.weapon}
+        </div></td>
+        <td class="time">${formatTime(r.bestTime)}</td>
+      </tr>
+    `;
   });
 
   html += '</tbody></table>';
+
   document.getElementById('mainContent').innerHTML = html;
 }
 
