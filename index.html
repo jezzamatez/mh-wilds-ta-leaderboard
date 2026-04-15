@@ -140,84 +140,168 @@ td, th {
 
 <script>
 const SHEET_ID = '1H6wf4FxwHntdQvsy5DSMXxaEpgLPeX7NQ7SQ51KaU04';
-const BASE = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
+const SHEET_BASE = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
 
 const GID_RUNS = '0';
+const GID_MONSTERS = '73280311';
+const GID_WEAPONS = '2020437619';
+
+const DNF_TIME = 59 * 60;
 
 let allRuns = [];
+let filters = { variant: 'all', player: 'all' };
 let currentTab = 'leaderboard';
 
+// --- CSV parser (robust) ---
 function parseCSV(text) {
   const rows = [];
   let row = [];
   let current = '';
   let inQuotes = false;
 
-  for (let char of text) {
-    if (char === '"') inQuotes = !inQuotes;
-    else if (char === ',' && !inQuotes) {
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+
+    if (char === '"') {
+      if (inQuotes && text[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
       row.push(current);
       current = '';
-    } else if (char === '\n' && !inQuotes) {
-      row.push(current);
-      rows.push(row);
-      row = [];
-      current = '';
-    } else current += char;
+    } else if ((char === '\n' || char === '\r') && !inQuotes) {
+      if (current || row.length) {
+        row.push(current);
+        rows.push(row);
+        row = [];
+        current = '';
+      }
+    } else {
+      current += char;
+    }
   }
+
+  if (current || row.length) {
+    row.push(current);
+    rows.push(row);
+  }
+
   return rows;
 }
 
-function parseTime(t) {
-  if (!t) return null;
-  const m = t.match(/(\d+):(\d+)/);
+// --- helpers ---
+function parseTime(val) {
+  if (!val) return null;
+  const s = val.toString().toLowerCase().trim();
+  if (s.includes('dnf')) return null;
+
+  const m = s.match(/^(\d+):(\d+)/);
   if (!m) return null;
   return parseInt(m[1]) * 60 + parseInt(m[2]);
 }
 
-async function loadData() {
-  const res = await fetch(`${BASE}&gid=${GID_RUNS}`);
-  const text = await res.text();
-  const rows = parseCSV(text);
-
-  const headers = rows[0].map(h => h.trim().toLowerCase());
-  const col = name => headers.indexOf(name);
-
-  allRuns = [];
-
-  rows.slice(1).forEach(r => {
-    if (!r[col('player')]) return;
-
-    allRuns.push({
-      player: r[col('player')],
-      monster: r[col('monster')],
-      time: parseTime(r[col('time')])
-    });
-  });
-
-  render();
+function formatTime(secs) {
+  if (!secs) return 'DNF';
+  const m = Math.floor(secs / 60);
+  const s = Math.floor(secs % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-function render() {
+// --- pairing ---
+function pairHunts(runs) {
+  const paired = {};
+
+  runs.forEach(run => {
+    const key = `${run.variant}-${run.monster}`.toLowerCase();
+
+    if (!paired[key]) {
+      paired[key] = {
+        monster: run.monster,
+        variant: run.variant
+      };
+    }
+
+    if (run.player.toLowerCase().includes('jeremy'))
+      paired[key].jeremy = run;
+
+    if (run.player.toLowerCase().includes('matt'))
+      paired[key].matt = run;
+  });
+
+  return Object.values(paired);
+}
+
+// --- LOAD DATA (final version) ---
+async function loadData() {
+  const content = document.getElementById('mainContent');
+
+  try {
+    const [runsRes] = await Promise.all([
+      fetch(`${SHEET_BASE}&gid=${GID_RUNS}`).then(r => r.text())
+    ]);
+
+    const rows = parseCSV(runsRes);
+
+    const headers = rows[0].map(h => h.trim().toLowerCase());
+    const col = name => headers.indexOf(name);
+
+    const colPlayer = col('player');
+    const colMonster = col('monster');
+    const colVariant = col('variant');
+    const colTime = col('time') !== -1 ? col('time') : col('best time');
+
+    allRuns = [];
+
+    rows.slice(1).forEach(r => {
+      if (!r[colPlayer]) return;
+
+      allRuns.push({
+        player: r[colPlayer],
+        monster: r[colMonster],
+        variant: r[colVariant] || 'Base',
+        bestTime: parseTime(r[colTime])
+      });
+    });
+
+    window._hunts = pairHunts(allRuns);
+
+    renderLeaderboard();
+
+  } catch (e) {
+    console.error(e);
+    content.innerHTML = "Failed to load data";
+  }
+}
+
+// --- RENDER ---
+function renderLeaderboard() {
+  let rows = [];
+
+  window._hunts.forEach(h => {
+    if (h.jeremy) rows.push({ ...h.jeremy, name: 'Jeremy' });
+    if (h.matt) rows.push({ ...h.matt, name: 'Matt' });
+  });
+
+  rows.sort((a, b) => (a.bestTime || 9999) - (b.bestTime || 9999));
+
   let html = '<table>';
 
-  allRuns.forEach(r => {
-    html += `<tr>
-      <td>${r.monster}</td>
-      <td>${r.player}</td>
-      <td>${r.time || 'DNF'}</td>
-    </tr>`;
+  rows.forEach(r => {
+    html += `
+      <tr>
+        <td>${r.monster}</td>
+        <td>${r.name}</td>
+        <td>${formatTime(r.bestTime)}</td>
+      </tr>
+    `;
   });
 
   html += '</table>';
-  document.getElementById('mainContent').innerHTML = html;
-}
 
-function switchTab(tab, el) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  currentTab = tab;
-  render();
+  document.getElementById('mainContent').innerHTML = html;
 }
 
 loadData();
