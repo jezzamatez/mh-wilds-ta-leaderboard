@@ -147,6 +147,7 @@ const GID_RUNS = '0';
 const DNF_TIME = 59 * 60;
 
 let allRuns = [];
+let bestRuns = [];
 
 // --- CSV PARSER ---
 function parseCSV(text) {
@@ -193,7 +194,6 @@ function parseTime(val) {
   if (!val) return null;
 
   const s = val.toString().toLowerCase().trim();
-
   if (s.includes('dnf')) return null;
 
   const m = s.match(/^(\d+):(\d+)/);
@@ -202,7 +202,6 @@ function parseTime(val) {
   const minutes = parseInt(m[1]);
   const seconds = parseInt(m[2]);
 
-  // 🔥 HARD FILTER: anything 59:00 or higher = DNF
   if (minutes >= 59) return null;
 
   return minutes * 60 + seconds;
@@ -212,32 +211,6 @@ function formatTime(secs) {
   const m = Math.floor(secs / 60);
   const s = Math.floor(secs % 60);
   return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-// --- PAIR RUNS ---
-function pairHunts(runs) {
-  const paired = {};
-
-  runs.forEach(run => {
-    const key = `${run.variant}-${run.monster}`.toLowerCase();
-
-    if (!paired[key]) {
-      paired[key] = {
-        monster: run.monster,
-        variant: run.variant
-      };
-    }
-
-    if (run.player.toLowerCase().includes('jeremy')) {
-      paired[key].jeremy = run;
-    }
-
-    if (run.player.toLowerCase().includes('matt')) {
-      paired[key].matt = run;
-    }
-  });
-
-  return Object.values(paired);
 }
 
 // --- LOAD DATA ---
@@ -259,6 +232,7 @@ async function loadData() {
     const colMonster = col('monster');
     const colVariant = col('variant');
     const colTime = col('time') !== -1 ? col('time') : col('best time');
+    const colWeapon = col('weapon');
 
     allRuns = [];
 
@@ -266,20 +240,18 @@ async function loadData() {
       if (!r[colPlayer]) return;
 
       const time = parseTime(r[colTime]);
-
-      // 🔥 IGNORE DNF RUNS
-      if (!time || time >= DNF_TIME) return;
+      if (time === null) return;
 
       allRuns.push({
         player: r[colPlayer],
         monster: r[colMonster],
         variant: r[colVariant] || 'Base',
+        weapon: r[colWeapon] || '',
         bestTime: time
       });
     });
 
-    window._hunts = pairHunts(allRuns);
-
+    buildBestRuns();
     renderLeaderboard();
 
     status.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
@@ -291,16 +263,34 @@ async function loadData() {
   }
 }
 
-// --- RENDER ---
-function renderLeaderboard() {
-  let rows = [];
+// --- BUILD BEST RUN PER MONSTER ---
+function buildBestRuns() {
+  const map = {};
 
-  window._hunts.forEach(h => {
-    if (h.jeremy) rows.push({ ...h.jeremy, name: 'Jeremy' });
-    if (h.matt) rows.push({ ...h.matt, name: 'Matt' });
+  allRuns.forEach(run => {
+    const key = `${run.variant}-${run.monster}`.toLowerCase();
+
+    if (!map[key] || run.bestTime < map[key].bestTime) {
+      map[key] = run;
+    }
   });
 
-  rows.sort((a, b) => a.bestTime - b.bestTime);
+  bestRuns = Object.values(map).sort((a, b) => a.bestTime - b.bestTime);
+}
+
+// --- RENDER ---
+function renderLeaderboard() {
+  let jeremyWins = 0;
+  let mattWins = 0;
+
+  bestRuns.forEach(r => {
+    if (r.player.toLowerCase().includes('jeremy')) jeremyWins++;
+    if (r.player.toLowerCase().includes('matt')) mattWins++;
+  });
+
+  // update counters
+  document.getElementById('jeremyCount').textContent = jeremyWins;
+  document.getElementById('mattCount').textContent = mattWins;
 
   let html = `
     <table>
@@ -309,18 +299,20 @@ function renderLeaderboard() {
           <th>#</th>
           <th>Monster</th>
           <th>Player</th>
+          <th>Weapon</th>
           <th>Time</th>
         </tr>
       </thead>
       <tbody>
   `;
 
-  rows.forEach((r, i) => {
+  bestRuns.forEach((r, i) => {
     html += `
       <tr>
         <td>${i + 1}</td>
         <td>${r.monster}</td>
-        <td>${r.name}</td>
+        <td>${r.player}</td>
+        <td>${r.weapon}</td>
         <td>${formatTime(r.bestTime)}</td>
       </tr>
     `;
