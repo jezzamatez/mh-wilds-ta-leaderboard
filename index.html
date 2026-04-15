@@ -528,43 +528,22 @@ async function loadData() {
       fetch(`${SHEET_BASE}&gid=${GID_WEAPONS}`).then(r => r.text())
     ]);
 
-    const parse = (txt) => JSON.parse(txt.substring(txt.indexOf("{"), txt.lastIndexOf("}") + 1)).table.rows;
-    const runRows = parse(runsRes);
+    // NEW PARSER: This strips the Google wrapper so JSON.parse can work
+    const cleanJSON = (txt) => {
+      const start = txt.indexOf('{');
+      const end = txt.lastIndexOf('}') + 1;
+      return JSON.parse(txt.substring(start, end));
+    };
+
+    const runRows = cleanJSON(runsRes).table.rows;
+    const monsterRows = cleanJSON(monsterRes).table.rows;
+    const weaponRows = cleanJSON(weaponRes).table.rows;
+
+    // Proceed with your mapping logic...
     const monsterMap = {};
-    parse(monsterRes).forEach(r => { if(r.c[0] && r.c[1]) monsterMap[r.c[0].v] = r.c[1].v; });
-    const weaponMap = {};
-    parse(weaponRes).forEach(r => { if(r.c[0] && r.c[1]) weaponMap[r.c[0].v] = r.c[1].v; });
-
-    allRuns = [];
-    runRows.forEach((row, index) => {
-      const cells = row.c;
-      // DEBUG: Uncomment the line below to see the raw row data in your browser console
-      // console.log(`Row ${index}:`, cells);
-
-      if (!cells || !cells[3] || !cells[3].v) return; // Skips rows with no Player Name
-
-      const mName = cells[1]?.v || 'Unknown';
-      const wName = cells[4]?.v || 'Unknown';
-
-      allRuns.push({
-        variant: cells[0]?.v || 'Base',
-        monsterName: mName,
-        monsterIcon: monsterMap[mName] || '👾',
-        player: cells[3]?.v || '',
-        weaponName: wName,
-        weaponIcon: weaponMap[wName] || '⚔️',
-        bestTime: parseTime(cells[8]?.v || cells[8]?.f)
-      });
-    });
-
-    window._hunts = pairHunts(allRuns);
-    updateStats();
-    renderTab();
-    document.getElementById('lastUpdated').textContent = `Live Sync: ${new Date().toLocaleTimeString()}`;
-  } catch(e) {
-    content.innerHTML = `<div class="error"><b>Sync Error:</b> ${e.message}</div>`;
-  }
-}
+    monsterRows.forEach(r => { if(r.c[0] && r.c[1]) monsterMap[r.c[0].v] = r.c[1].v; });
+    
+    // ... rest of the code
 
 function renderLeaderboard() {
   const hunts = getFilteredHunts();
