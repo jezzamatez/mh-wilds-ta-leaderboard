@@ -513,7 +513,6 @@ async function loadData() {
     const rows = await fetchJSON();
     if (!rows || rows.length === 0) throw new Error("Spreadsheet returned no data.");
 
-    // 1. DYNAMIC COLUMN DETECTION
     const headerRow = rows[0].c;
     let colMap = { variant: -1, tier: -1, icon: -1, player: -1, total: -1 };
 
@@ -526,33 +525,27 @@ async function loadData() {
       if (label.includes('total')) colMap.total = i;
     });
 
-    // Check if we missed critical columns
     if (colMap.player === -1 || colMap.total === -1) {
-      throw new Error(`Column headers not found. Ensure Row 1 has 'Player' and 'Total'. Found: ${headerRow.map(c => c?.v || 'empty').join(', ')}`);
+      throw new Error("Required headers (Player/Total) not found in Row 1.");
     }
 
     allRuns = [];
-    // 2. DATA EXTRACTION
     for (let i = 1; i < rows.length; i++) {
       const cells = rows[i].c;
       if (!cells) continue;
-
       const pRaw = cells[colMap.player]?.v || cells[colMap.player]?.f || '';
       const playerName = pRaw.toString().trim();
       if (!playerName) continue;
-
-      const timeRaw = cells[colMap.total]?.f || cells[colMap.total]?.v || '';
 
       allRuns.push({
         variant: cells[colMap.variant]?.v || cells[colMap.variant]?.f || 'Base',
         tier: cells[colMap.tier]?.v || cells[colMap.tier]?.f || '',
         icon: cells[colMap.icon]?.v || cells[colMap.icon]?.f || '',
         player: playerName,
-        bestTime: parseTime(timeRaw)
+        bestTime: parseTime(cells[colMap.total]?.f || cells[colMap.total]?.v)
       });
     }
 
-    // 3. PAIRING LOGIC (Jeremy vs Matt)
     const paired = {};
     allRuns.forEach(run => {
       const key = `${run.variant}-${run.tier}-${run.icon}`.toLowerCase().replace(/\s/g, '');
@@ -563,7 +556,6 @@ async function loadData() {
           variant: run.variant 
         };
       }
-      
       const p = run.player.toLowerCase();
       if (p.includes('jeremy')) paired[key].jeremy = run;
       if (p.includes('matt')) paired[key].matt = run;
@@ -572,11 +564,11 @@ async function loadData() {
     window._hunts = Object.values(paired);
     
     if (window._hunts.length === 0) {
-        content.innerHTML = `<div class="empty">Synced successfully, but found 0 runs. Make sure Row 1 has headers and data starts on Row 2.</div>`;
+      content.innerHTML = `<div class="empty">No runs paired. Check names and headers.</div>`;
     } else {
-        updateStats();
-        renderTab();
-        document.getElementById('lastUpdated').textContent = `Live Sync: ${new Date().toLocaleTimeString()}`;
+      updateStats();
+      renderTab();
+      document.getElementById('lastUpdated').textContent = `Live Sync: ${new Date().toLocaleTimeString()}`;
     }
   } catch(e) {
     console.error("Load Error:", e);
@@ -599,9 +591,7 @@ function renderTab() {
 function renderLeaderboard() {
   const hunts = getFilteredHunts();
   const content = document.getElementById('mainContent');
-  
   let html = `<div class="board-wrap"><table><thead><tr><th>Icon</th><th>Hunt</th><th>Jeremy</th><th>Matt</th></tr></thead><tbody>`;
-  
   hunts.forEach(h => {
     html += `<tr>
       <td style="font-size: 20px;">${h.icon}</td>
