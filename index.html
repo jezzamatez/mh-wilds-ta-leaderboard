@@ -479,12 +479,13 @@ let filters = { variant: 'all', player: 'all' };
 let currentTab = 'leaderboard';
 
 async function fetchJSON() {
-  const proxyUrl = 'https://api.allorigins.win/raw?url=';
-  const res = await fetch(proxyUrl + encodeURIComponent(DATA_URL));
+  // Use the direct Google URL instead of the proxy to avoid "Network Error"
+  const res = await fetch(DATA_URL);
+  
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const text = await res.text();
   
-  // Extract JSON from the Google Wrapper
+  // Extract the JSON object from the Google wrapper
   const json = JSON.parse(text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1));
   return json.table.rows;
 }
