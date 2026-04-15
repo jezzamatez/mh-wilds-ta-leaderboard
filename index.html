@@ -522,34 +522,54 @@ async function loadData() {
   document.getElementById('lastUpdated').textContent = 'Syncing...';
 
   try {
+    // 1. Fetch all three data sources as plain text
     const [runsRes, monsterRes, weaponRes] = await Promise.all([
       fetch(`${SHEET_BASE}&gid=${GID_RUNS}`).then(r => r.text()),
       fetch(`${SHEET_BASE}&gid=${GID_MONSTERS}`).then(r => r.text()),
       fetch(`${SHEET_BASE}&gid=${GID_WEAPONS}`).then(r => r.text())
     ]);
 
-    const cleanJSON = (txt) => {
-      const start = txt.indexOf('{');
-      const end = txt.lastIndexOf('}') + 1;
-      return JSON.parse(txt.substring(start, end));
+    // 2. NEW ROBUST PARSER: Stays within the try block
+    const parseGoogleJSON = (txt) => {
+      try {
+        const start = txt.indexOf('{');
+        const end = txt.lastIndexOf('}') + 1;
+        if (start === -1 || end === 0) throw new Error("No JSON found in response");
+        const jsonString = txt.substring(start, end);
+        return JSON.parse(jsonString);
+      } catch (err) {
+        console.error("Fragment that failed to parse:", txt.substring(0, 100));
+        throw new Error("Google Sheets returned invalid format. Check if the sheet is published.");
+      }
     };
 
-    const runRows = cleanJSON(runsRes).table.rows;
-    const monsterRows = cleanJSON(monsterRes).table.rows;
-    const weaponRows = cleanJSON(weaponRes).table.rows;
+    // 3. Extract the rows
+    const runRows = parseGoogleJSON(runsRes).table.rows;
+    const monsterRows = parseGoogleJSON(monsterRes).table.rows;
+    const weaponRows = parseGoogleJSON(weaponRes).table.rows;
 
+    // 4. Map Monster Icons (Name -> Icon)
     const monsterMap = {};
-    monsterRows.forEach(r => { if(r.c[0] && r.c[1]) monsterMap[r.c[0].v] = r.c[1].v; });
-    
-    const weaponMap = {};
-    weaponRows.forEach(r => { if(r.c[0] && r.c[1]) weaponMap[r.c[0].v] = r.c[1].v; });
+    monsterRows.forEach(r => {
+      if (r.c && r.c[0] && r.c[1]) monsterMap[r.c[0].v] = r.c[1].v;
+    });
 
+    // 5. Map Weapon Icons (Name -> Icon)
+    const weaponMap = {};
+    weaponRows.forEach(r => {
+      if (r.c && r.c[0] && r.c[1]) weaponMap[r.c[0].v] = r.c[1].v;
+    });
+
+    // 6. Process Runs
     allRuns = [];
     runRows.forEach(row => {
       const cells = row.c;
-      if (!cells || !cells[3] || !cells[3].v) return;
+      // Skip headers or empty rows (Column 3 is Player Name)
+      if (!cells || !cells[3] || cells[3].v === "Player" || cells[3].v === null) return;
+
       const mName = cells[1]?.v || 'Unknown';
       const wName = cells[4]?.v || 'Unknown';
+
       allRuns.push({
         variant: cells[0]?.v || 'Base',
         monsterName: mName,
@@ -561,13 +581,15 @@ async function loadData() {
       });
     });
 
+    // 7. Finalize and Update UI
     window._hunts = pairHunts(allRuns);
     updateStats();
     renderTab();
     document.getElementById('lastUpdated').textContent = `Live Sync: ${new Date().toLocaleTimeString()}`;
+
   } catch(e) {
-    console.error("Load Error:", e);
-    content.innerHTML = `<div class="error"><b>Sync Error:</b> ${e.message}</div>`;
+    console.error("Critical Sync Error:", e);
+    content.innerHTML = `<div class="error"><b>Sync Error:</b> ${e.message}<br><small>Check the console (F12) for details.</small></div>`;
   }
 }
 
