@@ -538,9 +538,11 @@ async function loadData() {
     const monsterRows = cleanJSON(monsterRes).table.rows;
     const weaponRows = cleanJSON(weaponRes).table.rows;
 
+    // Map Monsters (Name -> Icon)
     const monsterMap = {};
     monsterRows.forEach(r => { if(r.c[0] && r.c[1]) monsterMap[r.c[0].v] = r.c[1].v; });
     
+    // Map Weapons (Name -> Icon)
     const weaponMap = {};
     weaponRows.forEach(r => { if(r.c[0] && r.c[1]) weaponMap[r.c[0].v] = r.c[1].v; });
 
@@ -566,7 +568,7 @@ async function loadData() {
     renderTab();
     document.getElementById('lastUpdated').textContent = `Live Sync: ${new Date().toLocaleTimeString()}`;
   } catch(e) {
-    console.error(e);
+    console.error("Load Error:", e);
     content.innerHTML = `<div class="error"><b>Sync Error:</b> ${e.message}</div>`;
   }
 }
@@ -576,8 +578,12 @@ function renderLeaderboard() {
   const playerFilter = filters.player;
   let rows = [];
   hunts.forEach(h => {
-    if ((playerFilter === 'all' || playerFilter === 'Jeremy') && h.jeremy) rows.push({ ...h.jeremy, playerName: 'Jeremy', hunt: h });
-    if ((playerFilter === 'all' || playerFilter || 'Matt') && h.matt) rows.push({ ...h.matt, playerName: 'Matt', hunt: h });
+    if ((playerFilter === 'all' || playerFilter === 'Jeremy') && h.jeremy) {
+        rows.push({ ...h.jeremy, playerName: 'Jeremy', hunt: h });
+    }
+    if ((playerFilter === 'all' || playerFilter === 'Matt') && h.matt) {
+        rows.push({ ...h.matt, playerName: 'Matt', hunt: h });
+    }
   });
   rows.sort((a, b) => (a.bestTime || 999999) - (b.bestTime || 999999));
   
