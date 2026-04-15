@@ -18,7 +18,7 @@
       margin-top: 20px;
     }
 
-    /* Scoreboard styling */
+    /* Scoreboard */
     .scoreboard {
       display: flex;
       justify-content: space-between;
@@ -48,7 +48,7 @@
       color: #e6edf3;
     }
 
-    /* Navigation Tabs */
+    /* Tabs */
     .tabs {
       display: flex;
       justify-content: center;
@@ -74,7 +74,7 @@
       background: #1c2333;
     }
 
-    /* Table Styles */
+    /* Table Foundations */
     table {
       width: 95%;
       max-width: 900px;
@@ -97,14 +97,14 @@
     .leaderboard-table th:nth-child(3), .leaderboard-table td:nth-child(3) { width: 160px; } 
     .leaderboard-table th:nth-child(4), .leaderboard-table td:nth-child(4) { width: 100px; text-align: right; }
 
-    /* Weapon Grid Specifics */
-    .weapon-grid { table-layout: auto; width: 95%; max-width: 1100px; }
+    /* Weapon Grid Matrix */
+    .weapon-grid { table-layout: auto; width: 95%; max-width: 1200px; }
     .weapon-header-cell { text-align: center; padding: 10px 4px; width: 45px; }
-    .weapon-header-cell img { display: block; margin: 0 auto; width: 24px; height: 24px; }
+    .weapon-header-cell img { display: block; margin: 0 auto; width: 24px; height: 24px; cursor: help; }
     .weapon-header-cell span { display: none; } 
 
-    .monster-cell { vertical-align: middle; font-weight: bold; background: rgba(255, 255, 255, 0.02); }
-    .sub-row-player { font-size: 0.8rem; height: 30px; font-weight: 600; }
+    .monster-cell { vertical-align: middle; font-weight: bold; background: rgba(255, 255, 255, 0.02); border-right: 1px solid #1c2333; }
+    .sub-row-player { font-size: 0.8rem; height: 30px; font-weight: 600; width: 80px; }
     .time-cell { text-align: center; font-family: monospace; border-left: 1px solid #1c2333; font-size: 0.8rem; }
 
     th { border-bottom: 1px solid #2a3242; color: #9fb3c8; font-size: 0.85rem; text-transform: uppercase; }
@@ -184,22 +184,18 @@ function parseCSV(text) {
 function parseTime(val) {
   if (!val) return null;
   const s = val.toString().toLowerCase().trim();
-  
-  // Explicitly ignore DNF and common error placeholders
   if (s.includes('dnf') || s === "" || s.includes('n/a')) return null;
 
-  // Handle mm:ss or mm:ss.ms
   const m = s.match(/^(\d+):(\d+)(\.\d+)?/);
   if (!m) return null;
 
-  const minutes = parseInt(m[1]);
-  const seconds = parseInt(m[2]);
+  const mins = parseInt(m[1]);
+  const secs = parseInt(m[2]);
   const ms = m[3] ? parseFloat(m[3]) : 0;
 
-  // STRICT FILTER: Any run 59 minutes or longer is treated as invalid
-  if (minutes >= 59) return null;
+  if (mins >= 59) return null; // Filter DNF/Invalid 59:00 runs
 
-  return (minutes * 60) + seconds + ms;
+  return (mins * 60) + secs + ms;
 }
 
 function formatTime(secs) {
@@ -236,18 +232,22 @@ async function loadData() {
     const headers = runRows[0].map(h => h.toLowerCase());
     const cP = headers.indexOf('player'), cM = headers.indexOf('monster'), cT = headers.indexOf('time') !== -1 ? headers.indexOf('time') : headers.indexOf('best time'), cW = headers.indexOf('weapon');
 
-    allRuns = [];
+    const weaponBestMap = {};
     runRows.slice(1).forEach(r => {
       const time = parseTime(r[cT]);
       const weapon = r[cW] ? r[cW].trim() : "";
       const monster = r[cM] ? r[cM].trim() : "";
+      const player = r[cP] ? r[cP].trim() : "";
       
-      // Filter out invalid, incomplete, or DNF (59:00+) runs
-      if (r[cP] && monster !== "" && weapon !== "" && time !== null) {
-        allRuns.push({ player: r[cP], monster: monster, variant: r[headers.indexOf('variant')] || 'Base', weapon: weapon, bestTime: time });
+      if (player && monster !== "" && weapon !== "" && time !== null) {
+        const key = `${player}-${monster}-${weapon}`.toLowerCase();
+        if (!weaponBestMap[key] || time < weaponBestMap[key].bestTime) {
+          weaponBestMap[key] = { player, monster, weapon, bestTime: time, variant: r[headers.indexOf('variant')] || 'Base' };
+        }
       }
     });
 
+    allRuns = Object.values(weaponBestMap);
     buildBestRuns();
     currentView === 'leaderboard' ? renderLeaderboard() : renderWeaponTimes();
     document.getElementById('lastUpdated').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
@@ -308,28 +308,46 @@ function renderWeaponTimes() {
   const weapons = [...new Set(allRuns.map(r => r.weapon))].sort();
   const monsters = [...new Set(bestRuns.map(r => r.monster))];
   
-  let html = `<table class="weapon-grid"><thead><tr><th style="width:200px">Monster / Player</th>`;
+  const groupedByTier = {};
+  monsters.forEach(mName => {
+    const tier = monsterTiers[mName.toLowerCase()] || 'Unknown';
+    if (!groupedByTier[tier]) groupedByTier[tier] = [];
+    groupedByTier[tier].push(mName);
+  });
+
+  const sortedTiers = Object.keys(groupedByTier).sort((a, b) => b.localeCompare(a));
+
+  let html = `<table class="weapon-grid"><thead><tr><th style="width:200px">Monster</th>`;
   weapons.forEach(w => {
     const icon = weaponIcons[w.toLowerCase()];
     html += `<th class="weapon-header-cell">${icon ? `<img src="${icon}" class="icon" title="${w}">` : ''}<span>${w}</span></th>`;
   });
   html += `</tr></thead><tbody>`;
 
-  monsters.forEach(mName => {
-    const mKey = mName.toLowerCase();
-    html += `<tr><td rowspan="2" class="monster-cell"><div class="cell-flex">${monsterIcons[mKey] ? `<img src="${monsterIcons[mKey]}" class="icon">` : ''}<div>${mName}<br><small style="color:#7f8ca3">${monsterTiers[mKey]||''}</small></div></div></td>
-    <td class="player jeremy sub-row-player" style="border-left:3px solid #4ea1ff">Jeremy</td>`;
-    weapons.forEach(w => {
-      const run = allRuns.find(r => r.monster === mName && r.weapon === w && r.player.toLowerCase().includes('jeremy'));
-      html += `<td class="time-cell">${run ? formatTime(run.bestTime) : '-'}</td>`;
+  sortedTiers.forEach(tier => {
+    html += `<tr class="tier-row"><td colspan="${weapons.length + 1}">${tier}</td></tr>`;
+    groupedByTier[tier].forEach(mName => {
+      const mKey = mName.toLowerCase();
+      
+      // Jeremy Row
+      html += `<tr><td rowspan="2" class="monster-cell"><div class="cell-flex">${monsterIcons[mKey] ? `<img src="${monsterIcons[mKey]}" class="icon">` : ''}${mName}</div></td>
+      <td class="player jeremy sub-row-player" style="border-left:3px solid #4ea1ff">Jeremy</td>`;
+      weapons.forEach(w => {
+        const run = allRuns.find(r => r.monster === mName && r.weapon === w && r.player.toLowerCase().includes('jeremy'));
+        html += `<td class="time-cell">${run ? formatTime(run.bestTime) : '-'}</td>`;
+      });
+      html += `</tr>`;
+
+      // Matt Row
+      html += `<tr><td class="player matt sub-row-player" style="border-left:3px solid #ffb347">Matt</td>`;
+      weapons.forEach(w => {
+        const run = allRuns.find(r => r.monster === mName && r.weapon === w && r.player.toLowerCase().includes('matt'));
+        html += `<td class="time-cell">${run ? formatTime(run.bestTime) : '-'}</td>`;
+      });
+      html += `</tr>`;
     });
-    html += `</tr><tr><td class="player matt sub-row-player" style="border-left:3px solid #ffb347">Matt</td>`;
-    weapons.forEach(w => {
-      const run = allRuns.find(r => r.monster === mName && r.weapon === w && r.player.toLowerCase().includes('matt'));
-      html += `<td class="time-cell">${run ? formatTime(run.bestTime) : '-'}</td>`;
-    });
-    html += `</tr>`;
   });
+
   document.getElementById('mainContent').innerHTML = html + `</tbody></table>`;
 }
 
