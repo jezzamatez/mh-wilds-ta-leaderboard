@@ -144,6 +144,8 @@ const SHEET_ID = '1H6wf4FxwHntdQvsy5DSMXxaEpgLPeX7NQ7SQ51KaU04';
 const SHEET_BASE = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
 const GID_RUNS = '0';
 
+const DNF_TIME = 59 * 60;
+
 let allRuns = [];
 
 // --- CSV PARSER ---
@@ -199,13 +201,12 @@ function parseTime(val) {
 }
 
 function formatTime(secs) {
-  if (!secs) return 'DNF';
   const m = Math.floor(secs / 60);
   const s = Math.floor(secs % 60);
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-// --- PAIR RUNS (Jeremy vs Matt per monster) ---
+// --- PAIR RUNS ---
 function pairHunts(runs) {
   const paired = {};
 
@@ -256,11 +257,16 @@ async function loadData() {
     rows.slice(1).forEach(r => {
       if (!r[colPlayer]) return;
 
+      const time = parseTime(r[colTime]);
+
+      // 🔥 IGNORE DNF RUNS
+      if (!time || time >= DNF_TIME) return;
+
       allRuns.push({
         player: r[colPlayer],
         monster: r[colMonster],
         variant: r[colVariant] || 'Base',
-        bestTime: parseTime(r[colTime])
+        bestTime: time
       });
     });
 
@@ -286,7 +292,7 @@ function renderLeaderboard() {
     if (h.matt) rows.push({ ...h.matt, name: 'Matt' });
   });
 
-  rows.sort((a, b) => (a.bestTime || 999999) - (b.bestTime || 999999));
+  rows.sort((a, b) => a.bestTime - b.bestTime);
 
   let html = `
     <table>
@@ -319,8 +325,6 @@ function renderLeaderboard() {
 
 // --- INIT ---
 loadData();
-
-// optional auto refresh every 2 minutes
 setInterval(loadData, 120000);
 </script>
 
