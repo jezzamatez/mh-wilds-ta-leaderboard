@@ -20,21 +20,19 @@
     table { width: 95%; max-width: 900px; margin: auto; border-collapse: collapse; table-layout: fixed; }
     th, td { padding: 8px 10px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    /* Leaderboard Columns */
     .leaderboard-table th:nth-child(1), .leaderboard-table td:nth-child(1) { width: 220px; } 
     .leaderboard-table th:nth-child(2), .leaderboard-table td:nth-child(2) { width: 100px; } 
     .leaderboard-table th:nth-child(3), .leaderboard-table td:nth-child(3) { width: 160px; } 
     .leaderboard-table th:nth-child(4), .leaderboard-table td:nth-child(4) { width: 100px; text-align: right; }
 
-    /* Weapon Grid Matrix */
     .weapon-grid { table-layout: auto; width: 95%; max-width: 1250px; }
-    .weapon-header-cell { text-align: center; padding: 10px 4px; min-width: 45px; }
-    .weapon-header-cell img { display: block; margin: 0 auto; width: 26px; height: 26px; }
+    .weapon-header-cell { text-align: center; padding: 10px 4px; width: 45px; min-width: 45px; }
+    .weapon-header-cell img { display: block; margin: 0 auto; width: 24px; height: 24px; }
     .weapon-header-cell span { display: none; } 
 
     .monster-cell { vertical-align: middle; font-weight: bold; background: rgba(255, 255, 255, 0.02); border-right: 1px solid #1c2333; }
-    .sub-row-player { font-size: 0.85rem; height: 32px; font-weight: 600; width: 85px; }
-    .time-cell { text-align: center; font-family: 'Courier New', monospace; border-left: 1px solid #1c2333; font-size: 0.85rem; }
+    .sub-row-player { font-size: 0.8rem; height: 30px; font-weight: 600; width: 80px; }
+    .time-cell { text-align: center; font-family: monospace; border-left: 1px solid #1c2333; font-size: 0.8rem; }
 
     th { border-bottom: 1px solid #2a3242; color: #9fb3c8; font-size: 0.85rem; text-transform: uppercase; }
     tr { border-bottom: 1px solid #1c2333; }
@@ -49,6 +47,7 @@
     tr.row-jeremy { border-left: 3px solid #4ea1ff; }
     tr.row-matt { border-left: 3px solid #ffb347; }
 
+    .time { font-family: monospace; font-weight: 600; color: #ffb347; }
     #lastUpdated { text-align: center; margin: 30px auto; color: #7f8ca3; font-size: 0.8rem; }
   </style>
 </head>
@@ -224,7 +223,6 @@ function renderLeaderboard() {
 }
 
 function renderWeaponTimes() {
-  // Use monsters identified in the leaderboard for structure
   const monsters = [...new Set(bestRuns.map(r => r.monster))];
   const groupedByTier = {};
   monsters.forEach(mName => {
@@ -240,6 +238,13 @@ function renderWeaponTimes() {
   });
   html += `</tr></thead><tbody>`;
 
+  // Pre-create a strict lookup map for the grid
+  const gridLookup = {};
+  allRuns.forEach(r => {
+    const key = `${r.player}|${r.monster}|${r.weapon}`.toLowerCase();
+    gridLookup[key] = formatTime(r.bestTime);
+  });
+
   Object.keys(groupedByTier).sort((a, b) => b.localeCompare(a)).forEach(tier => {
     html += `<tr class="tier-row"><td colspan="${weaponOrder.length + 1}">${tier}</td></tr>`;
     groupedByTier[tier].forEach(mName => {
@@ -248,25 +253,17 @@ function renderWeaponTimes() {
       // Jeremy Row
       html += `<tr><td rowspan="2" class="monster-cell"><div class="cell-flex">${monsterIcons[mKey] ? `<img src="${monsterIcons[mKey]}" class="icon">` : ''}${mName}</div></td>
       <td class="player jeremy sub-row-player" style="border-left:3px solid #4ea1ff">Jeremy</td>`;
-      weaponOrder.forEach(weaponName => {
-        const run = allRuns.find(r => 
-          r.monster.toLowerCase() === mKey && 
-          r.weapon.toLowerCase() === weaponName.toLowerCase() && 
-          r.player.toLowerCase() === 'jeremy'
-        );
-        html += `<td class="time-cell">${run ? formatTime(run.bestTime) : '-'}</td>`;
+      weaponOrder.forEach(w => {
+        const time = gridLookup[`jeremy|${mKey}|${w.toLowerCase()}`];
+        html += `<td class="time-cell">${time || '-'}</td>`;
       });
       html += `</tr>`;
 
       // Matt Row
       html += `<tr><td class="player matt sub-row-player" style="border-left:3px solid #ffb347">Matt</td>`;
-      weaponOrder.forEach(weaponName => {
-        const run = allRuns.find(r => 
-          r.monster.toLowerCase() === mKey && 
-          r.weapon.toLowerCase() === weaponName.toLowerCase() && 
-          r.player.toLowerCase() === 'matt'
-        );
-        html += `<td class="time-cell">${run ? formatTime(run.bestTime) : '-'}</td>`;
+      weaponOrder.forEach(w => {
+        const time = gridLookup[`matt|${mKey}|${w.toLowerCase()}`];
+        html += `<td class="time-cell">${time || '-'}</td>`;
       });
       html += `</tr>`;
     });
