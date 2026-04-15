@@ -486,12 +486,12 @@ async function fetchJSON() {
   return json.table.rows;
 }
 
-function parseTime(str) {
-  if (!str) return null;
-  const s = str.toString().toLowerCase().trim();
+function parseTime(val) {
+  if (!val) return null;
+  const s = val.toString().toLowerCase().trim();
   if (s.includes('dnf') || s === '') return null;
   
-  // Handle Google's Date format: Date(1899,11,30,0,5,12) -> 5:12
+  // Handle Google's internal Date format: Date(1899,11,30,0,5,12)
   if (s.includes('date')) {
     const parts = s.match(/\d+/g);
     if (parts && parts.length >= 6) {
@@ -503,7 +503,10 @@ function parseTime(str) {
 
   const m = s.match(/^(\d+):(\d+)(\.\d+)?$/);
   if (!m) return null;
-  return (parseInt(m[1]) * 60) + parseInt(m[2]) + (m[3] ? parseFloat(m[3]) : 0);
+  const mins = parseInt(m[1]);
+  const secs = parseInt(m[2]);
+  const ms = m[3] ? parseFloat(m[3]) : 0;
+  return (mins * 60) + secs + ms;
 }
 
 function formatTime(secs) {
@@ -519,15 +522,15 @@ async function loadData() {
 
   try {
     const rows = await fetchJSON();
-    if (!rows || rows.length === 0) throw new Error("No data found.");
+    if (!rows || rows.length === 0) throw new Error("No data found in sheet.");
 
     allRuns = [];
     
-    // Based on your error, data starts at Row 0
+    // Mapping based on your 'Found' error message:
     // Col 0: Variant ("Tempered")
     // Col 1: Tier ("5★")
     // Col 3: Player ("Jeremy")
-    // Col 8: Time ("Date(...)")
+    // Col 8: Grand Total ("Date(...)")
     
     rows.forEach(row => {
       const cells = row.c;
@@ -541,7 +544,7 @@ async function loadData() {
       allRuns.push({
         variant: cells[0]?.v || 'Base',
         tier: cells[1]?.v || '',
-        icon: '👾', // Default icon since Col 2 was empty in your snippet
+        icon: '👾', // Default icon as Col 2 was empty in your snippet
         player: playerName,
         bestTime: parseTime(timeRaw)
       });
@@ -565,14 +568,14 @@ async function loadData() {
     window._hunts = Object.values(paired);
     
     if (window._hunts.length === 0) {
-      content.innerHTML = `<div class="empty">No runs found for Jeremy or Matt.</div>`;
+      content.innerHTML = `<div class="empty">Connection successful, but no runs found for Jeremy or Matt.</div>`;
     } else {
       updateStats();
       renderTab();
       document.getElementById('lastUpdated').textContent = `Live Sync: ${new Date().toLocaleTimeString()}`;
     }
   } catch(e) {
-    console.error(e);
+    console.error("Load Error:", e);
     content.innerHTML = `<div class="error"><b>Sync Error:</b> ${e.message}</div>`;
   }
 }
