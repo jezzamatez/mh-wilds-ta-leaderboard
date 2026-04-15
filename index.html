@@ -233,19 +233,29 @@ async function loadData() {
     const monsterRows = parseCSV(monsterRes);
     const weaponRows = parseCSV(weaponRes);
 
-    // --- MONSTER ICONS (B=name, D=url) ---
+    // --- MONSTER ICON MAP (dynamic columns) ---
     monsterIcons = {};
+    const mHeaders = monsterRows[0].map(h => h.trim().toLowerCase());
+    const mNameCol = mHeaders.indexOf('monster');
+    const mIconCol = mHeaders.indexOf('icon');
+
     monsterRows.slice(1).forEach(r => {
-      if (r[1] && r[3]) {
-        monsterIcons[r[1].trim().toLowerCase()] = r[3];
+      if (r[mNameCol] && r[mIconCol]) {
+        const key = r[mNameCol].trim().toLowerCase();
+        monsterIcons[key] = r[mIconCol];
       }
     });
 
-    // --- WEAPON ICONS (A=name, C=url) ---
+    // --- WEAPON ICON MAP (dynamic columns) ---
     weaponIcons = {};
+    const wHeaders = weaponRows[0].map(h => h.trim().toLowerCase());
+    const wNameCol = wHeaders.indexOf('weapon') !== -1 ? wHeaders.indexOf('weapon') : 0;
+    const wIconCol = wHeaders.indexOf('icon');
+
     weaponRows.slice(1).forEach(r => {
-      if (r[0] && r[2]) {
-        weaponIcons[r[0].trim().toLowerCase()] = r[2];
+      if (r[wNameCol] && r[wIconCol]) {
+        const key = r[wNameCol].trim().toLowerCase();
+        weaponIcons[key] = r[wIconCol];
       }
     });
 
