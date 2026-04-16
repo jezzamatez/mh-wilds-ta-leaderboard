@@ -7,7 +7,6 @@
     body { margin: 0; font-family: Arial, sans-serif; background: #0b0f17; color: #e6edf3; }
     h1 { text-align: center; color: #ffb347; margin-top: 20px; margin-bottom: 10px; }
 
-    /* Filters & Tabs */
     .filter-bar { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
     .filter-btn { padding: 8px 16px; background: #151b28; border: 1px solid #2a3242; border-radius: 20px; color: #7f8ca3; cursor: pointer; font-size: 0.9rem; transition: 0.2s; }
     .filter-btn.active { background: #ffb347; color: #0b0f17; border-color: #ffb347; font-weight: bold; }
@@ -185,9 +184,21 @@ function switchTab(view, el) {
 }
 
 function render() {
-  const filtered = allRunsRaw.filter(r => r.runType === currentRunFilter);
+  // 1. Filter by Run Type (TA vs Freestyle)
+  let filtered = allRunsRaw.filter(r => r.runType === currentRunFilter);
   
-  // Calculate Global Rankings per Monster (regardless of player/weapon)
+  // 2. DEDUPLICATION: If there are multiple entries for the same Player/Monster/Weapon,
+  // keep only the single fastest one for ranking.
+  const uniqueBestMap = new Map();
+  filtered.forEach(r => {
+    const key = `${r.player.toLowerCase()}|${r.monster.toLowerCase()}|${r.weapon.toLowerCase()}`;
+    if (!uniqueBestMap.has(key) || r.timeSecs < uniqueBestMap.get(key).timeSecs) {
+      uniqueBestMap.set(key, r);
+    }
+  });
+  filtered = Array.from(uniqueBestMap.values());
+
+  // 3. Group and Sort for Ranking
   const monsterStats = {};
   filtered.forEach(r => {
     const m = r.monster.toLowerCase();
@@ -196,7 +207,6 @@ function render() {
   });
   
   for (let m in monsterStats) {
-    // Sort absolute times to determine global gold/silver
     monsterStats[m].sort((a, b) => a.timeSecs - b.timeSecs);
   }
 
@@ -208,7 +218,6 @@ function render() {
 }
 
 function renderLeaderboard(filtered, monsterStats) {
-  // Main leaderboard shows the absolute fastest run for each monster
   const bestOfEach = Object.values(monsterStats).map(list => list[0]);
   const grouped = {};
   bestOfEach.forEach(r => {
@@ -264,7 +273,7 @@ function renderWeaponTimes(filtered, monsterStats) {
     const p = r.player.toLowerCase().includes('jeremy') ? 'jeremy' : 'matt';
     const mKey = r.monster.toLowerCase();
     
-    // Explicitly find the rank in the pre-sorted global list
+    // Find rank in the pre-sorted list
     const rank = monsterStats[mKey].indexOf(r);
     let crown = "";
     if(rank === 0) crown = `<img src="${GOLD_CROWN}" class="crown-icon">`;
