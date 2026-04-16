@@ -38,6 +38,7 @@
 
     .leaderboard-time-wrapper { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: 80px; }
     
+    /* Time Delta Tooltip Styling */
     .time-val { font-weight: bold; }
     .time-val[title] { cursor: help; text-decoration: underline dotted rgba(255, 255, 255, 0.2); }
     
@@ -55,6 +56,15 @@
     .cell-flex { display: flex; align-items: center; gap: 8px; }
 
     .icon { width: 34px; height: 34px; object-fit: contain; transition: transform 0.2s ease; flex-shrink: 0; }
+    
+    /* Monster icon hovers when EITHER player row is hovered */
+    .weapon-grid tr.row-jeremy:hover .icon, 
+    .weapon-grid tr.row-matt:hover .icon,
+    .weapon-grid tr.row-jeremy:hover + tr.row-matt .icon,
+    .weapon-grid tr:has(+ tr.row-matt:hover) .icon { 
+      transform: scale(1.25); 
+    }
+
     .tempered-glow { filter: drop-shadow(0 0 5px rgba(163, 73, 255, 0.6)); }
 
     /* POPPING CROWNS */
@@ -76,33 +86,12 @@
       to { filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.9)); }
     }
 
-    /* WEAPON GRID HOVER LOGIC: Highlight monster AND crowns when either player row is hovered */
-    .weapon-grid tr.row-jeremy:hover .icon, 
-    .weapon-grid tr.row-matt:hover .icon,
-    .weapon-grid tr.row-jeremy:hover + tr.row-matt .icon,
-    .weapon-grid tr:has(+ tr.row-matt:hover) .icon,
-    .weapon-grid tr.row-jeremy:hover .crown-icon, 
-    .weapon-grid tr.row-matt:hover .crown-icon,
-    .weapon-grid tr.row-jeremy:hover + tr.row-matt .crown-icon,
-    .weapon-grid tr:has(+ tr.row-matt:hover) .crown-icon { 
-      transform: scale(1.25); 
-    }
-    
-    /* Slight rotation specifically for crowns on hover */
-    .weapon-grid tr.row-jeremy:hover .crown-icon, 
-    .weapon-grid tr.row-matt:hover .crown-icon,
-    .weapon-grid tr.row-jeremy:hover + tr.row-matt .crown-icon,
-    .weapon-grid tr:has(+ tr.row-matt:hover) .crown-icon {
-      transform: scale(1.4) rotate(-5deg);
-    }
-
-    /* Leaderboard Tab Hover */
-    .leaderboard-table tr:hover .crown-icon { transform: scale(1.4) rotate(-5deg); }
+    tr:hover .crown-icon { transform: scale(1.4) rotate(-5deg); }
 
     .player.jeremy { color: #4ea1ff; }
     .player.matt { color: #ffb347; }
     tr.row-jeremy { border-left: 3px solid #4ea1ff; }
-    tr.row-matt { border-left: 3 solid #ffb347; }
+    tr.row-matt { border-left: 3px solid #ffb347; }
 
     #videoOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; }
     #videoContainer { position: relative; width: 80%; max-width: 900px; aspect-ratio: 16/9; background: #000; }
@@ -188,7 +177,7 @@ function parseTime(val) {
   const m = s.match(/^(\d+):(\d+)(\.\d+)?/);
   if (!m) return null;
   const mins = parseInt(m[1]), secs = parseInt(m[2]), ms = m[3] ? parseFloat(m[3]) : 0;
-  return (mins * 60) + secs + ms;
+  return mins >= 59 ? null : (mins * 60) + secs + ms;
 }
 
 function formatTime(secs) {
@@ -310,7 +299,7 @@ function renderLeaderboard(filtered, monsterStats) {
   document.getElementById('jeremyCount').textContent = jW;
   document.getElementById('mattCount').textContent = mW;
 
-  let html = `<table class="leaderboard-table"><thead><tr><th style="width:200px">Monster</th><th>Player</th><th>Weapon</th><th style="text-align:right">Time</th></tr></thead><tbody>`;
+  let html = `<table><thead><tr><th style="width:200px">Monster</th><th>Player</th><th>Weapon</th><th style="text-align:right">Time</th></tr></thead><tbody>`;
   Object.keys(grouped).sort((a, b) => b.localeCompare(a)).forEach(tier => {
     html += `<tr class="tier-row"><td colspan="4">${tier}</td></tr>`;
     grouped[tier].forEach(r => {
@@ -357,16 +346,11 @@ function renderWeaponTimes(filtered, monsterStats) {
     const mKey = r.monster.toLowerCase();
     const wKey = r.weapon.toLowerCase();
 
-    // Time Delta Logic: Difference between this run and the fastest overall for this weapon/monster
+    // Time Delta Calculation
     const weaponRuns = filtered.filter(f => f.monster.toLowerCase() === mKey && f.weapon.toLowerCase() === wKey);
     weaponRuns.sort((a, b) => a.timeSecs - b.timeSecs);
-    const fastestVal = weaponRuns[0].timeSecs;
-    
-    let deltaStr = "Fastest time";
-    if (r.timeSecs > fastestVal) {
-      const diff = r.timeSecs - fastestVal;
-      deltaStr = `${formatTime(diff)} slower than fastest ${r.weapon}`;
-    }
+    const fastest = weaponRuns[0].timeSecs;
+    let deltaStr = (r.timeSecs > fastest) ? `+${formatTime(r.timeSecs - fastest)} behind 1st` : "Fastest time";
 
     const rank = monsterStats[mKey].indexOf(r);
     let medal = "";
