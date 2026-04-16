@@ -20,15 +20,9 @@
     table { width: 95%; max-width: 900px; margin: auto; border-collapse: collapse; table-layout: fixed; }
     th, td { padding: 8px 10px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    .leaderboard-table th:nth-child(1), .leaderboard-table td:nth-child(1) { width: 220px; } 
-    .leaderboard-table th:nth-child(2), .leaderboard-table td:nth-child(2) { width: 100px; } 
-    .leaderboard-table th:nth-child(3), .leaderboard-table td:nth-child(3) { width: 160px; } 
-    .leaderboard-table th:nth-child(4), .leaderboard-table td:nth-child(4) { width: 100px; text-align: right; }
-
     .weapon-grid { table-layout: auto; width: 95%; max-width: 1250px; }
     .weapon-header-cell { text-align: center; padding: 10px 4px; width: 45px; min-width: 45px; }
     .weapon-header-cell img { display: block; margin: 0 auto; width: 24px; height: 24px; }
-    .weapon-header-cell span { display: none; } 
 
     .monster-cell { vertical-align: middle; font-weight: bold; background: rgba(255, 255, 255, 0.02); border-right: 1px solid #1c2333; }
     .sub-row-player { font-size: 0.8rem; height: 30px; font-weight: 600; width: 80px; }
@@ -40,7 +34,6 @@
     .tier-row td { padding-top: 20px; font-weight: bold; color: #ffb347; border-bottom: 1px solid #2a3242; background: rgba(255, 179, 71, 0.05); }
     .cell-flex { display: flex; align-items: center; gap: 8px; }
     .icon { width: 24px; height: 24px; object-fit: contain; }
-    .icon.weapon { width: 20px; height: 20px; opacity: 0.9; }
 
     .player.jeremy { color: #4ea1ff; }
     .player.matt { color: #ffb347; }
@@ -83,19 +76,17 @@ let monsterTiers = {};
 let weaponIcons = {};
 let weaponOrder = []; 
 let currentView = 'leaderboard';
+let currentRunFilter = 'TA'; 
 
-// Helper to remove any potential hidden whitespace or formatting from Sheet data
-const clean = (str) => str ? str.toString().trim() : '';
+const clean = (s) => s ? s.toString().trim() : '';
 
 function parseCSV(text) {
   const rows = [];
   let row = [], current = '', inQuotes = false;
   for (let i = 0; i < text.length; i++) {
     const char = text[i];
-    if (char === '"') {
-      if (inQuotes && text[i + 1] === '"') { current += '"'; i++; } 
-      else inQuotes = !inQuotes;
-    } else if (char === ',' && !inQuotes) { row.push(current); current = ''; }
+    if (char === '"') { inQuotes = !inQuotes; } 
+    else if (char === ',' && !inQuotes) { row.push(current); current = ''; }
     else if ((char === '\n' || char === '\r') && !inQuotes) {
       if (current || row.length) { row.push(current); rows.push(row); row = []; current = ''; }
     } else current += char;
@@ -107,11 +98,9 @@ function parseCSV(text) {
 function parseTime(val) {
   if (!val) return null;
   const s = val.toString().toLowerCase().trim();
-  if (s.includes('dnf') || s === "" || s.includes('n/a')) return null;
   const m = s.match(/^(\d+):(\d+)(\.\d+)?/);
   if (!m) return null;
-  const mins = parseInt(m[1]), secs = parseInt(m[2]), ms = m[3] ? parseFloat(m[3]) : 0;
-  return mins >= 59 ? null : (mins * 60) + secs + ms;
+  return (parseInt(m[1]) * 60) + parseInt(m[2]) + (m[3] ? parseFloat(m[3]) : 0);
 }
 
 function formatTime(secs) {
@@ -131,36 +120,36 @@ async function loadData() {
 
     const runRows = parseCSV(runsRes), mRows = parseCSV(mRes), wRows = parseCSV(wRes);
 
+    // Map Monster Info (Pulling Tier exclusively from here)
     monsterIcons = {}; monsterTiers = {};
     mRows.slice(1).forEach(r => {
-      if (r[1]) {
-        const name = clean(r[1]);
-        monsterTiers[name.toLowerCase()] = clean(r[0]);
-        monsterIcons[name.toLowerCase()] = clean(r[3]);
-      }
+      const name = clean(r[1]).toLowerCase();
+      monsterTiers[name] = clean(r[0]); 
+      monsterIcons[name] = clean(r[3]);
     });
 
+    // Map Weapon Info
     weaponIcons = {}; weaponOrder = [];
     wRows.slice(1).forEach(r => {
-      if (r[0]) {
-        const wName = clean(r[0]);
-        weaponOrder.push(wName);
-        weaponIcons[wName.toLowerCase()] = clean(r[2]);
-      }
+      const wName = clean(r[0]);
+      weaponOrder.push(wName);
+      weaponIcons[wName.toLowerCase()] = clean(r[2]);
     });
 
+    // DYNAMIC HEADER DETECTION (Solves the Column D shift)
     const headers = runRows[0].map(h => h.toLowerCase().trim());
-    const cP = headers.indexOf('player'), cM = headers.indexOf('monster'), cW = headers.indexOf('weapon');
-    let cT = headers.indexOf('duration'); 
-    if (cT === -1) cT = headers.indexOf('time');
+    const cP = headers.indexOf('player');
+    const cR = headers.indexOf('run');
+    const cM = headers.indexOf('monster');
+    const cW = headers.indexOf('weapon'); // Detected as Column D
+    let cT = headers.indexOf('duration');
+    if (cT === -1) cT = headers.indexOf('hunt duration'); // Flexible naming
 
     const weaponBestMap = {};
     runRows.slice(1).forEach(r => {
-      const time = parseTime(r[cT]);
-      const weapon = clean(r[cW]);
-      const monster = clean(r[cM]);
-      const player = clean(r[cP]);
-      
+      if (clean(r[cR]) !== currentRunFilter) return;
+
+      const player = clean(r[cP]), monster = clean(r[cM]), weapon = clean(r[cW]), time = parseTime(r[cT]);
       if (player && monster && weapon && time !== null) {
         const key = `${player}|${monster}|${weapon}`.toLowerCase();
         if (!weaponBestMap[key] || time < weaponBestMap[key].bestTime) {
@@ -173,7 +162,7 @@ async function loadData() {
     buildBestRuns();
     currentView === 'leaderboard' ? renderLeaderboard() : renderWeaponTimes();
     document.getElementById('lastUpdated').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
-  } catch (e) { console.error(e); document.getElementById('lastUpdated').textContent = "Sync failed"; }
+  } catch (e) { console.error(e); }
 }
 
 function buildBestRuns() {
@@ -208,7 +197,7 @@ function renderLeaderboard() {
     grouped[tier].push(r);
   });
 
-  let html = `<table class="leaderboard-table"><thead><tr><th>Monster</th><th>Player</th><th>Weapon</th><th style="text-align:right">Time</th></tr></thead><tbody>`;
+  let html = `<table><thead><tr><th>Monster</th><th>Player</th><th>Weapon</th><th style="text-align:right">Time</th></tr></thead><tbody>`;
   Object.keys(grouped).sort((a, b) => b.localeCompare(a)).forEach(tier => {
     html += `<tr class="tier-row"><td colspan="4">${tier}</td></tr>`;
     grouped[tier].forEach(r => {
@@ -217,7 +206,7 @@ function renderLeaderboard() {
       html += `<tr class="row-${pCls}">
         <td><div class="cell-flex">${monsterIcons[mKey] ? `<img src="${monsterIcons[mKey]}" class="icon">` : ''}${r.monster}</div></td>
         <td class="player ${pCls}">${r.player}</td>
-        <td><div class="cell-flex">${weaponIcons[wKey] ? `<img src="${weaponIcons[wKey]}" class="icon weapon">` : ''}${r.weapon}</div></td>
+        <td><div class="cell-flex">${weaponIcons[wKey] ? `<img src="${weaponIcons[wKey]}" class="icon" style="width:20px">` : ''}${r.weapon}</div></td>
         <td class="time" style="text-align:right"><b>${formatTime(r.bestTime)}</b></td>
       </tr>`;
     });
@@ -226,7 +215,7 @@ function renderLeaderboard() {
 }
 
 function renderWeaponTimes() {
-  const monsters = [...new Set(bestRuns.map(r => r.monster))];
+  const monsters = [...new Set(allRuns.map(r => r.monster))];
   const groupedByTier = {};
   monsters.forEach(mName => {
     const tier = monsterTiers[mName.toLowerCase()] || 'Unknown';
@@ -236,38 +225,27 @@ function renderWeaponTimes() {
 
   let html = `<table class="weapon-grid"><thead><tr><th style="width:200px">Monster</th>`;
   weaponOrder.forEach(w => {
-    const icon = weaponIcons[w.toLowerCase()];
-    html += `<th class="weapon-header-cell">${icon ? `<img src="${icon}" class="icon" title="${w}">` : ''}<span>${w}</span></th>`;
+    html += `<th class="weapon-header-cell">${weaponIcons[w.toLowerCase()] ? `<img src="${weaponIcons[w.toLowerCase()]}" class="icon" title="${w}">` : ''}</th>`;
   });
   html += `</tr></thead><tbody>`;
 
-  // Grid mapping for precise placement
   const gridLookup = {};
   allRuns.forEach(r => {
-    const key = `${r.player.toLowerCase().includes('jeremy') ? 'jeremy' : 'matt'}|${r.monster.toLowerCase()}|${r.weapon.toLowerCase()}`;
-    gridLookup[key] = formatTime(r.bestTime);
+    const p = r.player.toLowerCase().includes('jeremy') ? 'jeremy' : 'matt';
+    gridLookup[`${p}|${r.monster.toLowerCase()}|${r.weapon.toLowerCase()}`] = formatTime(r.bestTime);
   });
 
   Object.keys(groupedByTier).sort((a, b) => b.localeCompare(a)).forEach(tier => {
     html += `<tr class="tier-row"><td colspan="${weaponOrder.length + 1}">${tier}</td></tr>`;
     groupedByTier[tier].forEach(mName => {
       const mKey = mName.toLowerCase();
-      
       // Jeremy Row
-      html += `<tr><td rowspan="2" class="monster-cell"><div class="cell-flex">${monsterIcons[mKey] ? `<img src="${monsterIcons[mKey]}" class="icon">` : ''}${mName}</div></td>
-      <td class="player jeremy sub-row-player" style="border-left:3px solid #4ea1ff">Jeremy</td>`;
-      weaponOrder.forEach(w => {
-        const time = gridLookup[`jeremy|${mKey}|${w.toLowerCase()}`];
-        html += `<td class="time-cell">${time || '-'}</td>`;
-      });
+      html += `<tr><td rowspan="2" class="monster-cell"><div class="cell-flex">${monsterIcons[mKey] ? `<img src="${monsterIcons[mKey]}" class="icon">` : ''}${mName}</div></td><td class="player jeremy sub-row-player" style="border-left:3px solid #4ea1ff">Jeremy</td>`;
+      weaponOrder.forEach(w => html += `<td class="time-cell">${gridLookup[`jeremy|${mKey}|${w.toLowerCase()}`] || '-'}</td>`);
       html += `</tr>`;
-
       // Matt Row
       html += `<tr><td class="player matt sub-row-player" style="border-left:3px solid #ffb347">Matt</td>`;
-      weaponOrder.forEach(w => {
-        const time = gridLookup[`matt|${mKey}|${w.toLowerCase()}`];
-        html += `<td class="time-cell">${time || '-'}</td>`;
-      });
+      weaponOrder.forEach(w => html += `<td class="time-cell">${gridLookup[`matt|${mKey}|${w.toLowerCase()}`] || '-'}</td>`);
       html += `</tr>`;
     });
   });
