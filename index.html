@@ -33,14 +33,13 @@
     
     .time-cell { text-align: center; font-family: 'Courier New', monospace; border-left: 1px solid #1c2333; font-size: 0.7rem; color: #7f8ca3; }
     
-    /* YouTube Red Play Button Styling */
     .time-link { 
       text-decoration: none; 
       font-weight: bold; 
       cursor: pointer; 
       display: inline-flex; 
       align-items: center; 
-      gap: 4px; 
+      gap: 3px; 
       justify-content: center;
       vertical-align: middle;
     }
@@ -50,17 +49,13 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 16px;
-      height: 12px;
-      background-color: #FF0000; /* YouTube Red */
-      border-radius: 3px;
+      width: 14px; 
+      height: 10px;
+      background-color: #FF0000; 
+      border-radius: 2px;
       flex-shrink: 0;
     }
-    .play-svg { 
-      width: 8px; 
-      height: 8px; 
-      fill: white; 
-    }
+    .play-svg { width: 7px; height: 7px; fill: white; }
     
     .jeremy-time { color: #4ea1ff !important; }
     .matt-time { color: #ffb347 !important; }
@@ -71,7 +66,9 @@
     .icon { width: 34px; height: 34px; object-fit: contain; transition: transform 0.2s ease; flex-shrink: 0; }
     tr:hover .icon { transform: scale(1.25); }
     .tempered-glow { filter: drop-shadow(0 0 5px rgba(163, 73, 255, 0.6)); }
-    .crown-icon { width: 14px; height: 14px; vertical-align: middle; margin-left: 2px; flex-shrink: 0; }
+    
+    /* Medal on the Left Styling */
+    .crown-icon { width: 12px; height: 12px; vertical-align: middle; margin-right: 3px; flex-shrink: 0; }
 
     .player.jeremy { color: #4ea1ff; }
     .player.matt { color: #ffb347; }
@@ -125,7 +122,6 @@ const GID_WEAPONS = '2020437619';
 const GOLD_CROWN = "https://cdn-icons-png.flaticon.com/512/2583/2583344.png";
 const SILVER_CROWN = "https://cdn-icons-png.flaticon.com/512/2583/2583350.png";
 
-// YouTube Styled Play Icon
 const PLAY_BUTTON_HTML = `
   <div class="play-svg-container">
     <svg class="play-svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -326,13 +322,15 @@ function renderWeaponTimes(filtered, monsterStats) {
     const p = r.player.toLowerCase().includes('jeremy') ? 'jeremy' : 'matt';
     const mKey = r.monster.toLowerCase();
     const rank = monsterStats[mKey].indexOf(r);
-    let crown = "";
-    if(rank === 0) crown = `<img src="${GOLD_CROWN}" class="crown-icon">`;
-    else if(rank === 1) crown = `<img src="${SILVER_CROWN}" class="crown-icon">`;
+    
+    let medal = "";
+    if(rank === 0) medal = `<img src="${GOLD_CROWN}" class="crown-icon">`;
+    else if(rank === 1) medal = `<img src="${SILVER_CROWN}" class="crown-icon">`;
 
     const timeStr = formatTime(r.timeSecs);
-    const content = r.link ? `<span onclick="openVideo('${r.link}')" class="time-link ${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${timeStr}${PLAY_BUTTON_HTML}</span>` : `<span class="${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${timeStr}</span>`;
-    lookup[`${p}|${mKey}|${r.weapon.toLowerCase()}`] = content + crown;
+    // Placed medal on the left of the time/play button
+    const content = r.link ? `<span onclick="openVideo('${r.link}')" class="time-link ${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${medal}${timeStr}${PLAY_BUTTON_HTML}</span>` : `<span class="${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${medal}${timeStr}</span>`;
+    lookup[`${p}|${mKey}|${r.weapon.toLowerCase()}`] = content;
   });
 
   Object.keys(groupedByTier).sort((a, b) => b.localeCompare(a)).forEach(tier => {
