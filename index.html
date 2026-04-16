@@ -25,7 +25,6 @@
     table { width: 95%; max-width: 950px; margin: auto; border-collapse: collapse; table-layout: fixed; }
     th, td { padding: 8px 10px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    /* Weapon Grid Styles */
     .weapon-grid { table-layout: auto; width: 98%; max-width: 1300px; margin-bottom: 50px; }
     .weapon-header-cell { text-align: center; padding: 4px; width: 45px; min-width: 45px; border-bottom: 1px solid #2a3242; }
     .weapon-header-cell img { display: block; margin: 0 auto; width: 24px; height: 24px; }
@@ -34,13 +33,11 @@
     .sub-row-player { font-size: 0.8rem; height: 30px; font-weight: 600; width: 85px; }
     
     .time-cell { text-align: center; font-family: monospace; border-left: 1px solid #1c2333; font-size: 0.8rem; color: #7f8ca3; }
-    
-    /* Time & Link Styles */
     .time-link { text-decoration: none; font-weight: bold; cursor: pointer; }
     .time-link:hover { text-decoration: underline; }
     
-    .jeremy-time { color: #4ea1ff !important; font-weight: bold; }
-    .matt-time { color: #ffb347 !important; font-weight: bold; }
+    .jeremy-time { color: #4ea1ff !important; }
+    .matt-time { color: #ffb347 !important; }
     
     .tier-row td { padding: 15px 10px 5px 10px; font-weight: bold; color: #ffb347; background: rgba(255, 179, 71, 0.05); border-bottom: 1px solid #2a3242; }
     .cell-flex { display: flex; align-items: center; gap: 8px; }
@@ -189,13 +186,17 @@ function switchTab(view, el) {
 
 function render() {
   const filtered = allRunsRaw.filter(r => r.runType === currentRunFilter);
+  
+  // Calculate Global Rankings per Monster (regardless of player/weapon)
   const monsterStats = {};
   filtered.forEach(r => {
     const m = r.monster.toLowerCase();
     if (!monsterStats[m]) monsterStats[m] = [];
     monsterStats[m].push(r);
   });
+  
   for (let m in monsterStats) {
+    // Sort absolute times to determine global gold/silver
     monsterStats[m].sort((a, b) => a.timeSecs - b.timeSecs);
   }
 
@@ -207,6 +208,7 @@ function render() {
 }
 
 function renderLeaderboard(filtered, monsterStats) {
+  // Main leaderboard shows the absolute fastest run for each monster
   const bestOfEach = Object.values(monsterStats).map(list => list[0]);
   const grouped = {};
   bestOfEach.forEach(r => {
@@ -261,6 +263,8 @@ function renderWeaponTimes(filtered, monsterStats) {
   filtered.forEach(r => {
     const p = r.player.toLowerCase().includes('jeremy') ? 'jeremy' : 'matt';
     const mKey = r.monster.toLowerCase();
+    
+    // Explicitly find the rank in the pre-sorted global list
     const rank = monsterStats[mKey].indexOf(r);
     let crown = "";
     if(rank === 0) crown = `<img src="${GOLD_CROWN}" class="crown-icon">`;
