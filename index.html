@@ -69,9 +69,13 @@
       display: flex; 
       align-items: center; 
       justify-content: center;
-      opacity: 0.9;
+      transition: opacity 0.2s, filter 0.2s;
     }
-    .time-link:hover { opacity: 1; }
+    
+    .time-link:hover { 
+      opacity: 1; 
+      filter: brightness(1.3);
+    }
     
     .play-button-spacer { width: 14px; height: 10px; display: inline-block; }
     .play-svg-container {
@@ -94,8 +98,11 @@
 
     .icon { width: 34px; height: 34px; object-fit: contain; transition: transform 0.2s ease; flex-shrink: 0; }
     
-    tr:hover .icon, 
-    tr:has(+ tr:hover) .icon { transform: scale(1.25); }
+    /* Enlarge icons ONLY on Weapon Grid hover */
+    .weapon-grid tr.row-jeremy:hover .icon, 
+    .weapon-grid tr.row-matt:hover .icon { 
+      transform: scale(1.25); 
+    }
 
     .tempered-glow { filter: drop-shadow(0 0 5px rgba(163, 73, 255, 0.6)); }
     .crown-icon { width: 14px; height: 14px; flex-shrink: 0; }
@@ -149,8 +156,9 @@ const GID_RUNS = '0';
 const GID_MONSTERS = '73280311';
 const GID_WEAPONS = '2020437619';
 
-const GOLD_CROWN = "https://cdn-icons-png.flaticon.com/512/2583/2583344.png";
-const SILVER_CROWN = "https://cdn-icons-png.flaticon.com/512/2583/2583350.png";
+// Updated Crown URLs
+const GOLD_CROWN = "https://www.phantombrawlers.com/static/mhwilds/Icons/King%20Crown.png";
+const SILVER_CROWN = "https://www.phantombrawlers.com/static/mhwilds/Icons/Big%20Crown.png";
 
 const PLAY_BUTTON_HTML = `
   <div class="play-svg-container">
