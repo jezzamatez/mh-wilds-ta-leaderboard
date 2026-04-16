@@ -24,6 +24,7 @@
     table { width: 98%; max-width: 1100px; margin: auto; border-collapse: collapse; table-layout: fixed; }
     th, td { padding: 8px 4px; text-align: left; white-space: nowrap; }
 
+    /* Weapon Grid alignment fixes */
     .weapon-grid { max-width: 1400px; margin-bottom: 50px; }
     .weapon-header-cell { text-align: center; padding: 4px; width: 52px; border-bottom: 1px solid #2a3242; }
     .weapon-header-cell img { display: block; margin: 0 auto; width: 22px; height: 22px; }
@@ -31,22 +32,33 @@
     .monster-cell { vertical-align: middle; font-weight: bold; background: rgba(255, 255, 255, 0.02); border-right: 1px solid #1c2333; width: 180px; }
     .sub-row-player { font-size: 0.75rem; height: 50px; font-weight: 600; width: 60px; text-align: center; border-right: 1px solid #1c2333; vertical-align: middle; }
     
-    .time-cell { text-align: center; font-family: 'Courier New', monospace; border-left: 1px solid #1c2333; font-size: 0.7rem; color: #7f8ca3; padding: 4px 1px; }
+    .time-cell { text-align: center; font-family: 'Courier New', monospace; border-left: 1px solid #1c2333; font-size: 0.7rem; color: #7f8ca3; padding: 4px 1px; vertical-align: middle; }
     
+    /* Fixed height stack for weapon grid to align rows */
     .cell-stack {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 4px;
+      min-height: 34px;
+      gap: 2px;
     }
 
-    /* Top row: Time + Medal */
     .time-medal-row {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 3px;
+      height: 16px;
+    }
+
+    /* Leaderboard specific alignment */
+    .leaderboard-time-wrapper {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      min-width: 80px;
     }
 
     .time-val { font-weight: bold; }
@@ -61,6 +73,7 @@
     }
     .time-link:hover { opacity: 1; }
     
+    .play-button-spacer { width: 14px; height: 10px; display: inline-block; }
     .play-svg-container {
       display: flex;
       align-items: center;
@@ -305,13 +318,19 @@ function renderLeaderboard(filtered, monsterStats) {
       const isJeremy = r.player.toLowerCase().includes('jeremy');
       const timeStr = formatTime(r.timeSecs);
       const isTempered = r.monster.toLowerCase().includes('tempered');
-      const timeHtml = r.link ? `<span onclick="openVideo('${r.link}')" class="time-link ${isJeremy ? 'jeremy-time' : 'matt-time'}">${timeStr}${PLAY_BUTTON_HTML}</span>` : `<span class="${isJeremy ? 'jeremy-time' : 'matt-time'}">${timeStr}</span>`;
+      
+      const playBtn = r.link ? `<span onclick="openVideo('${r.link}')" class="time-link">${PLAY_BUTTON_HTML}</span>` : `<span class="play-button-spacer"></span>`;
       
       html += `<tr class="row-${isJeremy ? 'jeremy' : 'matt'}">
         <td><div class="cell-flex">${monsterIcons[r.monster.toLowerCase()] ? `<img src="${monsterIcons[r.monster.toLowerCase()]}" class="icon ${isTempered ? 'tempered-glow' : ''}">` : ''}${r.monster}</div></td>
         <td class="player ${isJeremy ? 'jeremy' : 'matt'}">${r.player}</td>
         <td><div class="cell-flex">${weaponIcons[r.weapon.toLowerCase()] ? `<img src="${weaponIcons[r.weapon.toLowerCase()]}" class="icon" style="width:18px;height:18px">` : ''}${r.weapon}</div></td>
-        <td style="text-align:right">${timeHtml}</td>
+        <td style="text-align:right">
+          <div class="leaderboard-time-wrapper">
+            <span class="${isJeremy ? 'jeremy-time' : 'matt-time'} time-val">${timeStr}</span>
+            ${playBtn}
+          </div>
+        </td>
       </tr>`;
     });
   });
@@ -345,7 +364,7 @@ function renderWeaponTimes(filtered, monsterStats) {
     else if(rank === 1) medal = `<img src="${SILVER_CROWN}" class="crown-icon">`;
 
     const timeStr = formatTime(r.timeSecs);
-    const linkHtml = r.link ? `<span onclick="openVideo('${r.link}')" class="time-link">${PLAY_BUTTON_HTML}</span>` : '';
+    const linkHtml = r.link ? `<span onclick="openVideo('${r.link}')" class="time-link">${PLAY_BUTTON_HTML}</span>` : '<div style="height:10px"></div>';
     
     lookup[`${p}|${mKey}|${r.weapon.toLowerCase()}`] = `
       <div class="cell-stack">
