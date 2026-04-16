@@ -33,10 +33,17 @@
     
     .time-cell { text-align: center; font-family: 'Courier New', monospace; border-left: 1px solid #1c2333; font-size: 0.7rem; color: #7f8ca3; padding: 4px 1px; }
     
-    /* Vertically stack time, link, and medal */
     .cell-stack {
       display: flex;
       flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    /* Top row: Time + Medal */
+    .time-medal-row {
+      display: flex;
       align-items: center;
       justify-content: center;
       gap: 3px;
@@ -47,25 +54,24 @@
     .time-link { 
       text-decoration: none; 
       cursor: pointer; 
-      display: inline-flex; 
+      display: flex; 
       align-items: center; 
-      gap: 3px; 
-      font-size: 0.6rem;
+      justify-content: center;
       opacity: 0.9;
     }
-    .time-link:hover { text-decoration: underline; opacity: 1; }
+    .time-link:hover { opacity: 1; }
     
     .play-svg-container {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 12px; 
-      height: 8px;
+      width: 14px; 
+      height: 10px;
       background-color: #FF0000; 
       border-radius: 2px;
       flex-shrink: 0;
     }
-    .play-svg { width: 6px; height: 6px; fill: white; }
+    .play-svg { width: 7px; height: 7px; fill: white; }
     
     .jeremy-time { color: #4ea1ff !important; }
     .matt-time { color: #ffb347 !important; }
@@ -75,12 +81,11 @@
 
     .icon { width: 34px; height: 34px; object-fit: contain; transition: transform 0.2s ease; flex-shrink: 0; }
     
-    /* Monster Icon hover fix */
     tr:hover .icon, 
     tr:has(+ tr:hover) .icon { transform: scale(1.25); }
 
     .tempered-glow { filter: drop-shadow(0 0 5px rgba(163, 73, 255, 0.6)); }
-    .crown-icon { width: 14px; height: 14px; display: block; }
+    .crown-icon { width: 14px; height: 14px; flex-shrink: 0; }
 
     .player.jeremy { color: #4ea1ff; }
     .player.matt { color: #ffb347; }
@@ -340,13 +345,15 @@ function renderWeaponTimes(filtered, monsterStats) {
     else if(rank === 1) medal = `<img src="${SILVER_CROWN}" class="crown-icon">`;
 
     const timeStr = formatTime(r.timeSecs);
-    const linkHtml = r.link ? `<span onclick="openVideo('${r.link}')" class="time-link ${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${PLAY_BUTTON_HTML}Watch</span>` : '';
+    const linkHtml = r.link ? `<span onclick="openVideo('${r.link}')" class="time-link">${PLAY_BUTTON_HTML}</span>` : '';
     
     lookup[`${p}|${mKey}|${r.weapon.toLowerCase()}`] = `
       <div class="cell-stack">
-        <span class="time-val ${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${timeStr}</span>
+        <div class="time-medal-row">
+          <span class="time-val ${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${timeStr}</span>
+          ${medal}
+        </div>
         ${linkHtml}
-        ${medal}
       </div>`;
   });
 
