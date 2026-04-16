@@ -26,9 +26,12 @@
 
     .monster-cell { vertical-align: middle; font-weight: bold; background: rgba(255, 255, 255, 0.02); border-right: 1px solid #1c2333; width: 200px; }
     .sub-row-player { font-size: 0.8rem; height: 30px; font-weight: 600; width: 85px; }
+    
+    /* Time Colors */
     .time-cell { text-align: center; font-family: monospace; border-left: 1px solid #1c2333; font-size: 0.8rem; color: #7f8ca3; }
-    .time-cell.has-time { color: #ffb347; font-weight: bold; background: rgba(255, 179, 71, 0.05); }
-
+    .jeremy-time { color: #4ea1ff !important; font-weight: bold; }
+    .matt-time { color: #ffb347 !important; font-weight: bold; }
+    
     .tier-row td { padding: 15px 10px 5px 10px; font-weight: bold; color: #ffb347; background: rgba(255, 179, 71, 0.05); border-bottom: 1px solid #2a3242; }
     .cell-flex { display: flex; align-items: center; gap: 8px; }
     .icon { width: 24px; height: 24px; object-fit: contain; }
@@ -142,7 +145,6 @@ async function loadData() {
       const player = clean(r[cP]), monster = clean(r[cM]), weapon = clean(r[cW]), time = parseTime(clean(r[cT]));
       
       if (player && monster && weapon && time !== null) {
-        // MATCHING LOGIC: key uses trimmed/lowercase to avoid hidden spaces
         const key = `${player.toLowerCase()}|${monster.toLowerCase()}|${weapon.toLowerCase()}`;
         if (!weaponBestMap[key] || time < weaponBestMap[key].bestTime) {
           weaponBestMap[key] = { player, monster, weapon, bestTime: time };
@@ -193,12 +195,15 @@ function renderLeaderboard() {
   Object.keys(grouped).sort((a, b) => b.localeCompare(a)).forEach(tier => {
     html += `<tr class="tier-row"><td colspan="4">${tier}</td></tr>`;
     grouped[tier].forEach(r => {
-      const pCls = r.player.toLowerCase().includes('jeremy') ? 'jeremy' : 'matt';
+      const isJeremy = r.player.toLowerCase().includes('jeremy');
+      const pCls = isJeremy ? 'jeremy' : 'matt';
+      const timeCls = isJeremy ? 'jeremy-time' : 'matt-time';
+      
       html += `<tr class="row-${pCls}">
         <td><div class="cell-flex">${monsterIcons[r.monster.toLowerCase()] ? `<img src="${monsterIcons[r.monster.toLowerCase()]}" class="icon">` : ''}${r.monster}</div></td>
         <td class="player ${pCls}">${r.player}</td>
         <td><div class="cell-flex">${weaponIcons[r.weapon.toLowerCase()] ? `<img src="${weaponIcons[r.weapon.toLowerCase()]}" class="icon" style="width:20px">` : ''}${r.weapon}</div></td>
-        <td style="text-align:right"><b>${formatTime(r.bestTime)}</b></td>
+        <td style="text-align:right" class="${timeCls}">${formatTime(r.bestTime)}</td>
       </tr>`;
     });
   });
@@ -224,7 +229,6 @@ function renderWeaponTimes() {
   const lookup = {};
   allRuns.forEach(r => {
     const p = r.player.toLowerCase().includes('jeremy') ? 'jeremy' : 'matt';
-    // Use the same strict key construction as the data loader
     lookup[`${p}|${r.monster.toLowerCase()}|${r.weapon.toLowerCase()}`] = formatTime(r.bestTime);
   });
 
@@ -238,7 +242,7 @@ function renderWeaponTimes() {
         <td class="player jeremy sub-row-player">Jeremy</td>`;
       weaponOrder.forEach(w => {
         const val = lookup[`jeremy|${mKey}|${w.toLowerCase()}`];
-        html += `<td class="time-cell ${val ? 'has-time' : ''}">${val || '-'}</td>`;
+        html += `<td class="time-cell ${val ? 'jeremy-time' : ''}">${val || '-'}</td>`;
       });
       html += `</tr>`;
       // Matt Row
@@ -246,7 +250,7 @@ function renderWeaponTimes() {
         <td class="player matt sub-row-player">Matt</td>`;
       weaponOrder.forEach(w => {
         const val = lookup[`matt|${mKey}|${w.toLowerCase()}`];
-        html += `<td class="time-cell ${val ? 'has-time' : ''}">${val || '-'}</td>`;
+        html += `<td class="time-cell ${val ? 'matt-time' : ''}">${val || '-'}</td>`;
       });
       html += `</tr>`;
     });
