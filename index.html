@@ -2,10 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>TA Leaderboard</title>
+  <title>Monster Hunter Leaderboard</title>
   <style>
     body { margin: 0; font-family: Arial, sans-serif; background: #0b0f17; color: #e6edf3; }
-    h1 { text-align: center; color: #ffb347; margin-top: 20px; }
+    h1 { text-align: center; color: #ffb347; margin-top: 20px; margin-bottom: 10px; }
+
+    /* Filters & Tabs */
+    .filter-bar { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
+    .filter-btn { padding: 8px 16px; background: #151b28; border: 1px solid #2a3242; border-radius: 20px; color: #7f8ca3; cursor: pointer; font-size: 0.9rem; transition: 0.2s; }
+    .filter-btn.active { background: #ffb347; color: #0b0f17; border-color: #ffb347; font-weight: bold; }
 
     .scoreboard { display: flex; justify-content: space-between; gap: 20px; margin: 15px auto; max-width: 900px; width: 95%; }
     .score { background: #151b28; padding: 12px 20px; border-radius: 10px; text-align: center; flex: 1; max-width: 440px; }
@@ -17,17 +22,17 @@
     .tab { flex: 1; padding: 12px; text-align: center; background: #151b28; border-radius: 8px; cursor: pointer; max-width: 445px; }
     .tab.active { color: #ffb347; font-weight: bold; background: #1c2333; }
 
-    table { width: 95%; max-width: 900px; margin: auto; border-collapse: collapse; table-layout: fixed; }
+    table { width: 95%; max-width: 1000px; margin: auto; border-collapse: collapse; table-layout: fixed; }
     th, td { padding: 8px 10px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    .weapon-grid { table-layout: auto; width: 98%; max-width: 1300px; border-collapse: collapse; margin-bottom: 50px; }
+    /* Weapon Grid Styles */
+    .weapon-grid { table-layout: auto; width: 98%; max-width: 1300px; margin-bottom: 50px; }
     .weapon-header-cell { text-align: center; padding: 4px; width: 45px; min-width: 45px; border-bottom: 1px solid #2a3242; }
     .weapon-header-cell img { display: block; margin: 0 auto; width: 24px; height: 24px; }
 
     .monster-cell { vertical-align: middle; font-weight: bold; background: rgba(255, 255, 255, 0.02); border-right: 1px solid #1c2333; width: 200px; }
     .sub-row-player { font-size: 0.8rem; height: 30px; font-weight: 600; width: 85px; }
     
-    /* Time Colors */
     .time-cell { text-align: center; font-family: monospace; border-left: 1px solid #1c2333; font-size: 0.8rem; color: #7f8ca3; }
     .jeremy-time { color: #4ea1ff !important; font-weight: bold; }
     .matt-time { color: #ffb347 !important; font-weight: bold; }
@@ -35,18 +40,30 @@
     .tier-row td { padding: 15px 10px 5px 10px; font-weight: bold; color: #ffb347; background: rgba(255, 179, 71, 0.05); border-bottom: 1px solid #2a3242; }
     .cell-flex { display: flex; align-items: center; gap: 8px; }
     .icon { width: 24px; height: 24px; object-fit: contain; }
+    .crown-icon { width: 18px; height: 18px; vertical-align: middle; margin-left: 5px; }
 
     .player.jeremy { color: #4ea1ff; }
     .player.matt { color: #ffb347; }
     tr.row-jeremy { border-left: 3px solid #4ea1ff; }
     tr.row-matt { border-left: 3px solid #ffb347; }
 
+    /* Video Links */
+    .video-link { color: #ffb347; text-decoration: none; font-size: 0.8rem; cursor: pointer; }
+    .video-link:hover { text-decoration: underline; }
+    .embed-container { display: none; padding: 10px; background: #000; text-align: center; }
+    .embed-container iframe { width: 100%; max-width: 560px; height: 315px; border-radius: 8px; border: none; }
+
     #lastUpdated { text-align: center; margin: 30px auto; color: #7f8ca3; font-size: 0.8rem; }
   </style>
 </head>
 <body>
 
-<h1>TA Leaderboard</h1>
+<h1>Hunter Leaderboard</h1>
+
+<div class="filter-bar">
+  <div id="btnTA" class="filter-btn active" onclick="setRunFilter('TA')">TA Rules</div>
+  <div id="btnFreestyle" class="filter-btn" onclick="setRunFilter('Freestyle')">Freestyle</div>
+</div>
 
 <div class="scoreboard">
   <div class="score score-jeremy">Jeremy <span id="jeremyCount">0</span></div>
@@ -69,8 +86,10 @@ const GID_RUNS = '0';
 const GID_MONSTERS = '73280311';
 const GID_WEAPONS = '2020437619';
 
-let allRuns = [];
-let bestRuns = [];
+const GOLD_CROWN = "https://cdn-icons-png.flaticon.com/512/2583/2583344.png";
+const SILVER_CROWN = "https://cdn-icons-png.flaticon.com/512/2583/2583350.png";
+
+let allRunsRaw = [];
 let monsterIcons = {};
 let monsterTiers = {};
 let weaponIcons = {};
@@ -110,6 +129,18 @@ function formatTime(secs) {
   return `${m}:${s.toString().padStart(2, '0')}${ms === '.00' ? '' : ms}`;
 }
 
+function getYouTubeId(url) {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+}
+
+function toggleEmbed(id) {
+  const el = document.getElementById(`embed-${id}`);
+  el.style.display = el.style.display === 'block' ? 'none' : 'block';
+}
+
 async function loadData() {
   document.getElementById('lastUpdated').textContent = "Syncing...";
   try {
@@ -137,87 +168,119 @@ async function loadData() {
     });
 
     const headers = runRows[0].map(h => h.toLowerCase().trim());
-    const cP = headers.indexOf('player'), cR = headers.indexOf('run'), cM = headers.indexOf('monster'), cW = headers.indexOf('weapon'), cT = headers.indexOf('duration');
+    const cP = headers.indexOf('player'), cR = headers.indexOf('run'), cM = headers.indexOf('monster'), 
+          cW = headers.indexOf('weapon'), cT = headers.indexOf('duration'), cV = headers.indexOf('link');
 
-    const weaponBestMap = {};
-    runRows.slice(1).forEach(r => {
-      if (clean(r[cR]) !== currentRunFilter) return;
-      const player = clean(r[cP]), monster = clean(r[cM]), weapon = clean(r[cW]), time = parseTime(clean(r[cT]));
-      
-      if (player && monster && weapon && time !== null) {
-        const key = `${player.toLowerCase()}|${monster.toLowerCase()}|${weapon.toLowerCase()}`;
-        if (!weaponBestMap[key] || time < weaponBestMap[key].bestTime) {
-          weaponBestMap[key] = { player, monster, weapon, bestTime: time };
-        }
-      }
-    });
+    allRunsRaw = runRows.slice(1).map((r, idx) => ({
+      player: clean(r[cP]),
+      runType: clean(r[cR]),
+      monster: clean(r[cM]),
+      weapon: clean(r[cW]),
+      timeSecs: parseTime(clean(r[cT])),
+      link: clean(r[cV]),
+      id: idx
+    })).filter(r => r.timeSecs !== null);
 
-    allRuns = Object.values(weaponBestMap);
-    buildBestRuns();
-    currentView === 'leaderboard' ? renderLeaderboard() : renderWeaponTimes();
+    render();
     document.getElementById('lastUpdated').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
   } catch (e) { console.error(e); }
 }
 
-function buildBestRuns() {
-  const map = {};
-  allRuns.forEach(run => {
-    const key = run.monster.toLowerCase();
-    if (!map[key] || run.bestTime < map[key].bestTime) map[key] = run;
-  });
-  bestRuns = Object.values(map).sort((a, b) => a.bestTime - b.bestTime);
+function setRunFilter(type) {
+  currentRunFilter = type;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`btn${type}`).classList.add('active');
+  render();
 }
 
 function switchTab(view, el) {
   currentView = view;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
-  view === 'leaderboard' ? renderLeaderboard() : renderWeaponTimes();
+  render();
 }
 
-function renderLeaderboard() {
+function render() {
+  const filtered = allRunsRaw.filter(r => r.runType === currentRunFilter);
+  
+  // Calculate crowns per monster
+  const monsterStats = {};
+  filtered.forEach(r => {
+    const m = r.monster.toLowerCase();
+    if (!monsterStats[m]) monsterStats[m] = [];
+    monsterStats[m].push(r);
+  });
+  
+  for (let m in monsterStats) {
+    monsterStats[m].sort((a, b) => a.timeSecs - b.timeSecs);
+  }
+
+  if (currentView === 'leaderboard') {
+    renderLeaderboard(filtered, monsterStats);
+  } else {
+    renderWeaponTimes(filtered);
+  }
+}
+
+function renderLeaderboard(filtered, monsterStats) {
+  // Find only the BEST run for each monster for the main leaderboard
+  const bestOfEach = Object.values(monsterStats).map(list => list[0]);
+  
   const grouped = {};
-  bestRuns.forEach(r => {
+  bestOfEach.forEach(r => {
     const tier = monsterTiers[r.monster.toLowerCase()] || 'Other';
     if (!grouped[tier]) grouped[tier] = [];
     grouped[tier].push(r);
   });
 
   let jW = 0, mW = 0;
-  bestRuns.forEach(r => { 
-    const p = r.player.toLowerCase();
-    if (p.includes('jeremy')) jW++; else if (p.includes('matt')) mW++; 
+  bestOfEach.forEach(r => { 
+    if (r.player.toLowerCase().includes('jeremy')) jW++; else mW++; 
   });
   document.getElementById('jeremyCount').textContent = jW;
   document.getElementById('mattCount').textContent = mW;
 
-  let html = `<table><thead><tr><th>Monster</th><th>Player</th><th>Weapon</th><th style="text-align:right">Time</th></tr></thead><tbody>`;
+  let html = `<table><thead><tr><th>Monster</th><th>Player</th><th>Weapon</th><th>Time</th><th>Video</th></tr></thead><tbody>`;
   Object.keys(grouped).sort((a, b) => b.localeCompare(a)).forEach(tier => {
-    html += `<tr class="tier-row"><td colspan="4">${tier}</td></tr>`;
+    html += `<tr class="tier-row"><td colspan="5">${tier}</td></tr>`;
     grouped[tier].forEach(r => {
       const isJeremy = r.player.toLowerCase().includes('jeremy');
-      const pCls = isJeremy ? 'jeremy' : 'matt';
-      const timeCls = isJeremy ? 'jeremy-time' : 'matt-time';
+      const ytId = getYouTubeId(r.link);
       
-      html += `<tr class="row-${pCls}">
-        <td><div class="cell-flex">${monsterIcons[r.monster.toLowerCase()] ? `<img src="${monsterIcons[r.monster.toLowerCase()]}" class="icon">` : ''}${r.monster}</div></td>
-        <td class="player ${pCls}">${r.player}</td>
+      html += `<tr class="row-${isJeremy ? 'jeremy' : 'matt'}">
+        <td><div class="cell-flex">${monsterIcons[r.monster.toLowerCase()] ? `<img src="${monsterIcons[r.monster.toLowerCase()]}" class="icon">` : ''}${r.monster} <img src="${GOLD_CROWN}" class="crown-icon"></div></td>
+        <td class="player ${isJeremy ? 'jeremy' : 'matt'}">${r.player}</td>
         <td><div class="cell-flex">${weaponIcons[r.weapon.toLowerCase()] ? `<img src="${weaponIcons[r.weapon.toLowerCase()]}" class="icon" style="width:20px">` : ''}${r.weapon}</div></td>
-        <td style="text-align:right" class="${timeCls}">${formatTime(r.bestTime)}</td>
+        <td class="${isJeremy ? 'jeremy-time' : 'matt-time'}">${formatTime(r.timeSecs)}</td>
+        <td>${ytId ? `<span class="video-link" onclick="toggleEmbed(${r.id})">🎬 Watch</span>` : '-'}</td>
       </tr>`;
+      if (ytId) {
+        html += `<tr id="embed-${r.id}" class="embed-container"><td colspan="5">
+          <iframe src="https://www.youtube.com/embed/${ytId}" allowfullscreen></iframe>
+        </td></tr>`;
+      }
     });
   });
   document.getElementById('mainContent').innerHTML = html + '</tbody></table>';
 }
 
-function renderWeaponTimes() {
-  const monsters = [...new Set(allRuns.map(r => r.monster))];
+function renderWeaponTimes(filtered) {
+  const monsters = [...new Set(filtered.map(r => r.monster))];
   const groupedByTier = {};
   monsters.forEach(m => {
     const t = monsterTiers[m.toLowerCase()] || 'Other';
     if (!groupedByTier[t]) groupedByTier[t] = [];
     groupedByTier[t].push(m);
   });
+
+  // Calculate Crowns for the weapon grid
+  const monsterRankings = {};
+  filtered.forEach(r => {
+    const m = r.monster.toLowerCase();
+    if(!monsterRankings[m]) monsterRankings[m] = [];
+    monsterRankings[m].push(r);
+  });
+  for(let m in monsterRankings) monsterRankings[m].sort((a,b) => a.timeSecs - b.timeSecs);
 
   let html = `<table class="weapon-grid"><thead><tr><th>Monster</th><th></th>`;
   weaponOrder.forEach(w => {
@@ -227,32 +290,35 @@ function renderWeaponTimes() {
   html += `</tr></thead><tbody>`;
 
   const lookup = {};
-  allRuns.forEach(r => {
+  filtered.forEach(r => {
     const p = r.player.toLowerCase().includes('jeremy') ? 'jeremy' : 'matt';
-    lookup[`${p}|${r.monster.toLowerCase()}|${r.weapon.toLowerCase()}`] = formatTime(r.bestTime);
+    const mKey = r.monster.toLowerCase();
+    const rank = monsterRankings[mKey].indexOf(r);
+    let crown = "";
+    if(rank === 0) crown = `<img src="${GOLD_CROWN}" class="crown-icon">`;
+    else if(rank === 1) crown = `<img src="${SILVER_CROWN}" class="crown-icon">`;
+
+    lookup[`${p}|${mKey}|${r.weapon.toLowerCase()}`] = { 
+      time: formatTime(r.timeSecs), 
+      isJeremy: p === 'jeremy',
+      crown: crown
+    };
   });
 
   Object.keys(groupedByTier).sort((a, b) => b.localeCompare(a)).forEach(tier => {
     html += `<tr class="tier-row"><td colspan="${weaponOrder.length + 2}">${tier}</td></tr>`;
     groupedByTier[tier].forEach(m => {
       const mKey = m.toLowerCase();
-      // Jeremy Row
-      html += `<tr class="row-jeremy">
-        <td rowspan="2" class="monster-cell"><div class="cell-flex">${monsterIcons[mKey] ? `<img src="${monsterIcons[mKey]}" class="icon">` : ''}${m}</div></td>
-        <td class="player jeremy sub-row-player">Jeremy</td>`;
-      weaponOrder.forEach(w => {
-        const val = lookup[`jeremy|${mKey}|${w.toLowerCase()}`];
-        html += `<td class="time-cell ${val ? 'jeremy-time' : ''}">${val || '-'}</td>`;
+      ['jeremy', 'matt'].forEach(p => {
+        html += `<tr class="row-${p}">
+          ${p === 'jeremy' ? `<td rowspan="2" class="monster-cell"><div class="cell-flex">${monsterIcons[mKey] ? `<img src="${monsterIcons[mKey]}" class="icon">` : ''}${m}</div></td>` : ''}
+          <td class="player ${p} sub-row-player">${p.charAt(0).toUpperCase() + p.slice(1)}</td>`;
+        weaponOrder.forEach(w => {
+          const data = lookup[`${p}|${mKey}|${w.toLowerCase()}`];
+          html += `<td class="time-cell ${data ? (data.isJeremy ? 'jeremy-time' : 'matt-time') : ''}">${data ? data.time + data.crown : '-'}</td>`;
+        });
+        html += `</tr>`;
       });
-      html += `</tr>`;
-      // Matt Row
-      html += `<tr class="row-matt">
-        <td class="player matt sub-row-player">Matt</td>`;
-      weaponOrder.forEach(w => {
-        const val = lookup[`matt|${mKey}|${w.toLowerCase()}`];
-        html += `<td class="time-cell ${val ? 'matt-time' : ''}">${val || '-'}</td>`;
-      });
-      html += `</tr>`;
     });
   });
   document.getElementById('mainContent').innerHTML = html + `</tbody></table>`;
