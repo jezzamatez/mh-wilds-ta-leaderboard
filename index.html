@@ -32,21 +32,36 @@
     .sub-row-player { font-size: 0.8rem; height: 30px; font-weight: 600; width: 85px; }
     
     .time-cell { text-align: center; font-family: monospace; border-left: 1px solid #1c2333; font-size: 0.8rem; color: #7f8ca3; }
-    .time-link { text-decoration: none; font-weight: bold; cursor: pointer; }
+    .time-link { text-decoration: none; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
     .time-link:hover { text-decoration: underline; }
     
     .jeremy-time { color: #4ea1ff !important; }
     .matt-time { color: #ffb347 !important; }
     
     .tier-row td { padding: 15px 10px 5px 10px; font-weight: bold; color: #ffb347; background: rgba(255, 179, 71, 0.05); border-bottom: 1px solid #2a3242; }
-    .cell-flex { display: flex; align-items: center; gap: 8px; }
-    .icon { width: 24px; height: 24px; object-fit: contain; }
+    .cell-flex { display: flex; align-items: center; gap: 12px; }
+
+    /* Enlarged Icons & Hover effect */
+    .icon { width: 36px; height: 36px; object-fit: contain; transition: transform 0.2s ease; }
+    tr:hover .icon { transform: scale(1.2); }
+
+    /* Subtle Purple Glow for Tempered monsters */
+    .tempered-glow { filter: drop-shadow(0 0 4px rgba(163, 73, 255, 0.7)); }
+
+    /* Play Button Icon */
+    .play-btn { width: 14px; height: 14px; opacity: 0.8; }
+
     .crown-icon { width: 18px; height: 18px; vertical-align: middle; margin-left: 4px; }
 
     .player.jeremy { color: #4ea1ff; }
     .player.matt { color: #ffb347; }
     tr.row-jeremy { border-left: 3px solid #4ea1ff; }
     tr.row-matt { border-left: 3px solid #ffb347; }
+
+    /* Video Modal */
+    #videoOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; }
+    #videoContainer { position: relative; width: 80%; max-width: 900px; aspect-ratio: 16/9; background: #000; }
+    #closeVideo { position: absolute; top: -40px; right: 0; color: white; font-size: 24px; cursor: pointer; font-weight: bold; }
 
     #lastUpdated { text-align: center; margin: 30px auto; color: #7f8ca3; font-size: 0.8rem; }
   </style>
@@ -73,6 +88,13 @@
 <div id="mainContent"></div>
 <div id="lastUpdated">Connecting...</div>
 
+<div id="videoOverlay" onclick="closeVideo()">
+  <div id="videoContainer" onclick="event.stopPropagation()">
+    <span id="closeVideo" onclick="closeVideo()">&times; Close</span>
+    <iframe id="videoFrame" width="100%" height="100%" frameborder="0" allowfullscreen></iframe>
+  </div>
+</div>
+
 <script>
 const SHEET_ID = '1H6wf4FxwHntdQvsy5DSMXxaEpgLPeX7NQ7SQ51KaU04';
 const SHEET_BASE = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
@@ -83,6 +105,7 @@ const GID_WEAPONS = '2020437619';
 
 const GOLD_CROWN = "https://cdn-icons-png.flaticon.com/512/2583/2583344.png";
 const SILVER_CROWN = "https://cdn-icons-png.flaticon.com/512/2583/2583350.png";
+const PLAY_ICON = "https://cdn-icons-png.flaticon.com/512/0/375.png";
 
 let allRunsRaw = [];
 let monsterIcons = {};
@@ -122,6 +145,25 @@ function parseTime(val) {
 function formatTime(secs) {
   const m = Math.floor(secs / 60), s = Math.floor(secs % 60), ms = (secs % 1).toFixed(2).substring(1);
   return `${m}:${s.toString().padStart(2, '0')}${ms === '.00' ? '' : ms}`;
+}
+
+function getEmbedUrl(url) {
+  if (!url) return "";
+  let id = "";
+  if (url.includes("v=")) id = url.split("v=")[1].split("&")[0];
+  else if (url.includes("youtu.be/")) id = url.split("youtu.be/")[1].split("?")[0];
+  return id ? `https://www.youtube.com/embed/${id}?autoplay=1` : url;
+}
+
+function openVideo(url) {
+  const embed = getEmbedUrl(url);
+  document.getElementById('videoFrame').src = embed;
+  document.getElementById('videoOverlay').style.display = 'flex';
+}
+
+function closeVideo() {
+  document.getElementById('videoOverlay').style.display = 'none';
+  document.getElementById('videoFrame').src = '';
 }
 
 async function loadData() {
@@ -184,11 +226,8 @@ function switchTab(view, el) {
 }
 
 function render() {
-  // 1. Filter by Run Type (TA vs Freestyle)
   let filtered = allRunsRaw.filter(r => r.runType === currentRunFilter);
   
-  // 2. DEDUPLICATION: If there are multiple entries for the same Player/Monster/Weapon,
-  // keep only the single fastest one for ranking.
   const uniqueBestMap = new Map();
   filtered.forEach(r => {
     const key = `${r.player.toLowerCase()}|${r.monster.toLowerCase()}|${r.weapon.toLowerCase()}`;
@@ -198,7 +237,6 @@ function render() {
   });
   filtered = Array.from(uniqueBestMap.values());
 
-  // 3. Group and Sort for Ranking
   const monsterStats = {};
   filtered.forEach(r => {
     const m = r.monster.toLowerCase();
@@ -239,12 +277,13 @@ function renderLeaderboard(filtered, monsterStats) {
     grouped[tier].forEach(r => {
       const isJeremy = r.player.toLowerCase().includes('jeremy');
       const timeStr = formatTime(r.timeSecs);
-      const timeHtml = r.link ? `<a href="${r.link}" target="_blank" class="time-link ${isJeremy ? 'jeremy-time' : 'matt-time'}">${timeStr}</a>` : `<span class="${isJeremy ? 'jeremy-time' : 'matt-time'}">${timeStr}</span>`;
+      const isTempered = r.monster.toLowerCase().includes('tempered');
+      const timeHtml = r.link ? `<span onclick="openVideo('${r.link}')" class="time-link ${isJeremy ? 'jeremy-time' : 'matt-time'}"><img src="${PLAY_ICON}" class="play-btn"> ${timeStr}</span>` : `<span class="${isJeremy ? 'jeremy-time' : 'matt-time'}">${timeStr}</span>`;
       
       html += `<tr class="row-${isJeremy ? 'jeremy' : 'matt'}">
-        <td><div class="cell-flex">${monsterIcons[r.monster.toLowerCase()] ? `<img src="${monsterIcons[r.monster.toLowerCase()]}" class="icon">` : ''}${r.monster}</div></td>
+        <td><div class="cell-flex">${monsterIcons[r.monster.toLowerCase()] ? `<img src="${monsterIcons[r.monster.toLowerCase()]}" class="icon ${isTempered ? 'tempered-glow' : ''}">` : ''}${r.monster}</div></td>
         <td class="player ${isJeremy ? 'jeremy' : 'matt'}">${r.player}</td>
-        <td><div class="cell-flex">${weaponIcons[r.weapon.toLowerCase()] ? `<img src="${weaponIcons[r.weapon.toLowerCase()]}" class="icon" style="width:20px">` : ''}${r.weapon}</div></td>
+        <td><div class="cell-flex">${weaponIcons[r.weapon.toLowerCase()] ? `<img src="${weaponIcons[r.weapon.toLowerCase()]}" class="icon" style="width:20px;height:20px">` : ''}${r.weapon}</div></td>
         <td style="text-align:right">${timeHtml}</td>
       </tr>`;
     });
@@ -273,14 +312,13 @@ function renderWeaponTimes(filtered, monsterStats) {
     const p = r.player.toLowerCase().includes('jeremy') ? 'jeremy' : 'matt';
     const mKey = r.monster.toLowerCase();
     
-    // Find rank in the pre-sorted list
     const rank = monsterStats[mKey].indexOf(r);
     let crown = "";
     if(rank === 0) crown = `<img src="${GOLD_CROWN}" class="crown-icon">`;
     else if(rank === 1) crown = `<img src="${SILVER_CROWN}" class="crown-icon">`;
 
     const timeStr = formatTime(r.timeSecs);
-    const content = r.link ? `<a href="${r.link}" target="_blank" class="time-link ${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${timeStr}</a>` : `<span class="${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${timeStr}</span>`;
+    const content = r.link ? `<span onclick="openVideo('${r.link}')" class="time-link ${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}"><img src="${PLAY_ICON}" class="play-btn"> ${timeStr}</span>` : `<span class="${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${timeStr}</span>`;
 
     lookup[`${p}|${mKey}|${r.weapon.toLowerCase()}`] = content + crown;
   });
@@ -289,9 +327,10 @@ function renderWeaponTimes(filtered, monsterStats) {
     html += `<tr class="tier-row"><td colspan="${weaponOrder.length + 2}">${tier}</td></tr>`;
     groupedByTier[tier].forEach(m => {
       const mKey = m.toLowerCase();
+      const isTempered = mKey.includes('tempered');
       ['jeremy', 'matt'].forEach(p => {
         html += `<tr class="row-${p}">
-          ${p === 'jeremy' ? `<td rowspan="2" class="monster-cell"><div class="cell-flex">${monsterIcons[mKey] ? `<img src="${monsterIcons[mKey]}" class="icon">` : ''}${m}</div></td>` : ''}
+          ${p === 'jeremy' ? `<td rowspan="2" class="monster-cell"><div class="cell-flex">${monsterIcons[mKey] ? `<img src="${monsterIcons[mKey]}" class="icon ${isTempered ? 'tempered-glow' : ''}">` : ''}${m}</div></td>` : ''}
           <td class="player ${p} sub-row-player">${p.charAt(0).toUpperCase() + p.slice(1)}</td>`;
         weaponOrder.forEach(w => {
           const cellData = lookup[`${p}|${mKey}|${w.toLowerCase()}`];
