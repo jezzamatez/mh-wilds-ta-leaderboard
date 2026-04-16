@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Monster Hunter Leaderboard</title>
+  <title>Hunter Leaderboard</title>
   <style>
     body { margin: 0; font-family: Arial, sans-serif; background: #0b0f17; color: #e6edf3; }
     h1 { text-align: center; color: #ffb347; margin-top: 20px; margin-bottom: 10px; }
@@ -22,7 +22,7 @@
     .tab { flex: 1; padding: 12px; text-align: center; background: #151b28; border-radius: 8px; cursor: pointer; max-width: 445px; }
     .tab.active { color: #ffb347; font-weight: bold; background: #1c2333; }
 
-    table { width: 95%; max-width: 1000px; margin: auto; border-collapse: collapse; table-layout: fixed; }
+    table { width: 95%; max-width: 950px; margin: auto; border-collapse: collapse; table-layout: fixed; }
     th, td { padding: 8px 10px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     /* Weapon Grid Styles */
@@ -34,24 +34,23 @@
     .sub-row-player { font-size: 0.8rem; height: 30px; font-weight: 600; width: 85px; }
     
     .time-cell { text-align: center; font-family: monospace; border-left: 1px solid #1c2333; font-size: 0.8rem; color: #7f8ca3; }
+    
+    /* Time & Link Styles */
+    .time-link { text-decoration: none; font-weight: bold; cursor: pointer; }
+    .time-link:hover { text-decoration: underline; }
+    
     .jeremy-time { color: #4ea1ff !important; font-weight: bold; }
     .matt-time { color: #ffb347 !important; font-weight: bold; }
     
     .tier-row td { padding: 15px 10px 5px 10px; font-weight: bold; color: #ffb347; background: rgba(255, 179, 71, 0.05); border-bottom: 1px solid #2a3242; }
     .cell-flex { display: flex; align-items: center; gap: 8px; }
     .icon { width: 24px; height: 24px; object-fit: contain; }
-    .crown-icon { width: 18px; height: 18px; vertical-align: middle; margin-left: 5px; }
+    .crown-icon { width: 18px; height: 18px; vertical-align: middle; margin-left: 4px; }
 
     .player.jeremy { color: #4ea1ff; }
     .player.matt { color: #ffb347; }
     tr.row-jeremy { border-left: 3px solid #4ea1ff; }
     tr.row-matt { border-left: 3px solid #ffb347; }
-
-    /* Video Links */
-    .video-link { color: #ffb347; text-decoration: none; font-size: 0.8rem; cursor: pointer; }
-    .video-link:hover { text-decoration: underline; }
-    .embed-container { display: none; padding: 10px; background: #000; text-align: center; }
-    .embed-container iframe { width: 100%; max-width: 560px; height: 315px; border-radius: 8px; border: none; }
 
     #lastUpdated { text-align: center; margin: 30px auto; color: #7f8ca3; font-size: 0.8rem; }
   </style>
@@ -129,18 +128,6 @@ function formatTime(secs) {
   return `${m}:${s.toString().padStart(2, '0')}${ms === '.00' ? '' : ms}`;
 }
 
-function getYouTubeId(url) {
-  if (!url) return null;
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-  const match = url.match(regExp);
-  return (match && match[2].length === 11) ? match[2] : null;
-}
-
-function toggleEmbed(id) {
-  const el = document.getElementById(`embed-${id}`);
-  el.style.display = el.style.display === 'block' ? 'none' : 'block';
-}
-
 async function loadData() {
   document.getElementById('lastUpdated').textContent = "Syncing...";
   try {
@@ -202,15 +189,12 @@ function switchTab(view, el) {
 
 function render() {
   const filtered = allRunsRaw.filter(r => r.runType === currentRunFilter);
-  
-  // Calculate crowns per monster
   const monsterStats = {};
   filtered.forEach(r => {
     const m = r.monster.toLowerCase();
     if (!monsterStats[m]) monsterStats[m] = [];
     monsterStats[m].push(r);
   });
-  
   for (let m in monsterStats) {
     monsterStats[m].sort((a, b) => a.timeSecs - b.timeSecs);
   }
@@ -218,14 +202,12 @@ function render() {
   if (currentView === 'leaderboard') {
     renderLeaderboard(filtered, monsterStats);
   } else {
-    renderWeaponTimes(filtered);
+    renderWeaponTimes(filtered, monsterStats);
   }
 }
 
 function renderLeaderboard(filtered, monsterStats) {
-  // Find only the BEST run for each monster for the main leaderboard
   const bestOfEach = Object.values(monsterStats).map(list => list[0]);
-  
   const grouped = {};
   bestOfEach.forEach(r => {
     const tier = monsterTiers[r.monster.toLowerCase()] || 'Other';
@@ -240,31 +222,26 @@ function renderLeaderboard(filtered, monsterStats) {
   document.getElementById('jeremyCount').textContent = jW;
   document.getElementById('mattCount').textContent = mW;
 
-  let html = `<table><thead><tr><th>Monster</th><th>Player</th><th>Weapon</th><th>Time</th><th>Video</th></tr></thead><tbody>`;
+  let html = `<table><thead><tr><th>Monster</th><th>Player</th><th>Weapon</th><th style="text-align:right">Time</th></tr></thead><tbody>`;
   Object.keys(grouped).sort((a, b) => b.localeCompare(a)).forEach(tier => {
-    html += `<tr class="tier-row"><td colspan="5">${tier}</td></tr>`;
+    html += `<tr class="tier-row"><td colspan="4">${tier}</td></tr>`;
     grouped[tier].forEach(r => {
       const isJeremy = r.player.toLowerCase().includes('jeremy');
-      const ytId = getYouTubeId(r.link);
+      const timeStr = formatTime(r.timeSecs);
+      const timeHtml = r.link ? `<a href="${r.link}" target="_blank" class="time-link ${isJeremy ? 'jeremy-time' : 'matt-time'}">${timeStr}</a>` : `<span class="${isJeremy ? 'jeremy-time' : 'matt-time'}">${timeStr}</span>`;
       
       html += `<tr class="row-${isJeremy ? 'jeremy' : 'matt'}">
-        <td><div class="cell-flex">${monsterIcons[r.monster.toLowerCase()] ? `<img src="${monsterIcons[r.monster.toLowerCase()]}" class="icon">` : ''}${r.monster} <img src="${GOLD_CROWN}" class="crown-icon"></div></td>
+        <td><div class="cell-flex">${monsterIcons[r.monster.toLowerCase()] ? `<img src="${monsterIcons[r.monster.toLowerCase()]}" class="icon">` : ''}${r.monster}</div></td>
         <td class="player ${isJeremy ? 'jeremy' : 'matt'}">${r.player}</td>
         <td><div class="cell-flex">${weaponIcons[r.weapon.toLowerCase()] ? `<img src="${weaponIcons[r.weapon.toLowerCase()]}" class="icon" style="width:20px">` : ''}${r.weapon}</div></td>
-        <td class="${isJeremy ? 'jeremy-time' : 'matt-time'}">${formatTime(r.timeSecs)}</td>
-        <td>${ytId ? `<span class="video-link" onclick="toggleEmbed(${r.id})">🎬 Watch</span>` : '-'}</td>
+        <td style="text-align:right">${timeHtml}</td>
       </tr>`;
-      if (ytId) {
-        html += `<tr id="embed-${r.id}" class="embed-container"><td colspan="5">
-          <iframe src="https://www.youtube.com/embed/${ytId}" allowfullscreen></iframe>
-        </td></tr>`;
-      }
     });
   });
   document.getElementById('mainContent').innerHTML = html + '</tbody></table>';
 }
 
-function renderWeaponTimes(filtered) {
+function renderWeaponTimes(filtered, monsterStats) {
   const monsters = [...new Set(filtered.map(r => r.monster))];
   const groupedByTier = {};
   monsters.forEach(m => {
@@ -272,15 +249,6 @@ function renderWeaponTimes(filtered) {
     if (!groupedByTier[t]) groupedByTier[t] = [];
     groupedByTier[t].push(m);
   });
-
-  // Calculate Crowns for the weapon grid
-  const monsterRankings = {};
-  filtered.forEach(r => {
-    const m = r.monster.toLowerCase();
-    if(!monsterRankings[m]) monsterRankings[m] = [];
-    monsterRankings[m].push(r);
-  });
-  for(let m in monsterRankings) monsterRankings[m].sort((a,b) => a.timeSecs - b.timeSecs);
 
   let html = `<table class="weapon-grid"><thead><tr><th>Monster</th><th></th>`;
   weaponOrder.forEach(w => {
@@ -293,16 +261,15 @@ function renderWeaponTimes(filtered) {
   filtered.forEach(r => {
     const p = r.player.toLowerCase().includes('jeremy') ? 'jeremy' : 'matt';
     const mKey = r.monster.toLowerCase();
-    const rank = monsterRankings[mKey].indexOf(r);
+    const rank = monsterStats[mKey].indexOf(r);
     let crown = "";
     if(rank === 0) crown = `<img src="${GOLD_CROWN}" class="crown-icon">`;
     else if(rank === 1) crown = `<img src="${SILVER_CROWN}" class="crown-icon">`;
 
-    lookup[`${p}|${mKey}|${r.weapon.toLowerCase()}`] = { 
-      time: formatTime(r.timeSecs), 
-      isJeremy: p === 'jeremy',
-      crown: crown
-    };
+    const timeStr = formatTime(r.timeSecs);
+    const content = r.link ? `<a href="${r.link}" target="_blank" class="time-link ${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${timeStr}</a>` : `<span class="${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${timeStr}</span>`;
+
+    lookup[`${p}|${mKey}|${r.weapon.toLowerCase()}`] = content + crown;
   });
 
   Object.keys(groupedByTier).sort((a, b) => b.localeCompare(a)).forEach(tier => {
@@ -314,8 +281,8 @@ function renderWeaponTimes(filtered) {
           ${p === 'jeremy' ? `<td rowspan="2" class="monster-cell"><div class="cell-flex">${monsterIcons[mKey] ? `<img src="${monsterIcons[mKey]}" class="icon">` : ''}${m}</div></td>` : ''}
           <td class="player ${p} sub-row-player">${p.charAt(0).toUpperCase() + p.slice(1)}</td>`;
         weaponOrder.forEach(w => {
-          const data = lookup[`${p}|${mKey}|${w.toLowerCase()}`];
-          html += `<td class="time-cell ${data ? (data.isJeremy ? 'jeremy-time' : 'matt-time') : ''}">${data ? data.time + data.crown : '-'}</td>`;
+          const cellData = lookup[`${p}|${mKey}|${w.toLowerCase()}`];
+          html += `<td class="time-cell">${cellData || '-'}</td>`;
         });
         html += `</tr>`;
       });
