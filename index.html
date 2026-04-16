@@ -17,7 +17,7 @@
     .score-matt { border-bottom: 3px solid #ffb347; color: #ffb347; }
     .score span { display: block; font-size: 28px; font-weight: bold; margin-top: 8px; color: #e6edf3; }
 
-    .tabs { display: flex; justify-content: center; gap: 10px; margin: 20px auto; max-width: 900px; width: 95%; }
+    .tabs { display: flex; justify(content): center; gap: 10px; margin: 20px auto; max-width: 900px; width: 95%; }
     .tab { flex: 1; padding: 12px; text-align: center; background: #151b28; border-radius: 8px; cursor: pointer; max-width: 445px; }
     .tab.active { color: #ffb347; font-weight: bold; background: #1c2333; }
 
@@ -34,13 +34,10 @@
     .time-cell { text-align: center; font-family: 'Courier New', monospace; border-left: 1px solid #1c2333; font-size: 0.7rem; color: #7f8ca3; padding: 4px 1px; vertical-align: middle; }
     
     .cell-stack { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 40px; gap: 4px; }
-    .time-medal-row { display: flex; align-items: center; justify-content: center; gap: 5px; height: 24px; }
+    .time-medal-row { display: flex; align-items: center; justify-content: center; gap: 5px; height: 22px; }
 
     .leaderboard-time-wrapper { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: 80px; }
-    
-    /* Time Delta Tooltip Styling */
     .time-val { font-weight: bold; }
-    .time-val[title] { cursor: help; text-decoration: underline dotted rgba(255, 255, 255, 0.2); }
     
     .time-link { text-decoration: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: filter 0.2s; }
     .time-link:hover { filter: brightness(1.4); }
@@ -57,7 +54,7 @@
 
     .icon { width: 34px; height: 34px; object-fit: contain; transition: transform 0.2s ease; flex-shrink: 0; }
     
-    /* Monster icon hovers when EITHER player row is hovered */
+    /* FIX: Ensure monster icon hovers when EITHER player row is hovered */
     .weapon-grid tr.row-jeremy:hover .icon, 
     .weapon-grid tr.row-matt:hover .icon,
     .weapon-grid tr.row-jeremy:hover + tr.row-matt .icon,
@@ -67,9 +64,9 @@
 
     .tempered-glow { filter: drop-shadow(0 0 5px rgba(163, 73, 255, 0.6)); }
 
-    /* POPPING CROWNS */
+    /* ENHANCED CROWNS */
     .crown-icon { 
-      width: 22px; 
+      width: 22px; /* Increased size */
       height: 22px; 
       flex-shrink: 0; 
       transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -344,15 +341,8 @@ function renderWeaponTimes(filtered, monsterStats) {
   filtered.forEach(r => {
     const p = r.player.toLowerCase().includes('jeremy') ? 'jeremy' : 'matt';
     const mKey = r.monster.toLowerCase();
-    const wKey = r.weapon.toLowerCase();
-
-    // Time Delta Calculation
-    const weaponRuns = filtered.filter(f => f.monster.toLowerCase() === mKey && f.weapon.toLowerCase() === wKey);
-    weaponRuns.sort((a, b) => a.timeSecs - b.timeSecs);
-    const fastest = weaponRuns[0].timeSecs;
-    let deltaStr = (r.timeSecs > fastest) ? `+${formatTime(r.timeSecs - fastest)} behind 1st` : "Fastest time";
-
     const rank = monsterStats[mKey].indexOf(r);
+    
     let medal = "";
     if(rank === 0) medal = `<img src="${GOLD_CROWN}" class="crown-icon gold-crown">`;
     else if(rank === 1) medal = `<img src="${SILVER_CROWN}" class="crown-icon silver-crown">`;
@@ -360,10 +350,10 @@ function renderWeaponTimes(filtered, monsterStats) {
     const timeStr = formatTime(r.timeSecs);
     const linkHtml = r.link ? `<span onclick="openVideo('${r.link}')" class="time-link">${PLAY_BUTTON_HTML}</span>` : '<div style="height:10px"></div>';
     
-    lookup[`${p}|${mKey}|${wKey}`] = `
+    lookup[`${p}|${mKey}|${r.weapon.toLowerCase()}`] = `
       <div class="cell-stack">
         <div class="time-medal-row">
-          <span class="time-val ${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}" title="${deltaStr}">${timeStr}</span>
+          <span class="time-val ${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${timeStr}</span>
           ${medal}
         </div>
         ${linkHtml}
