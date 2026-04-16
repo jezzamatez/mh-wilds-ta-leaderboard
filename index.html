@@ -11,7 +11,7 @@
     .filter-btn { padding: 8px 16px; background: #151b28; border: 1px solid #2a3242; border-radius: 20px; color: #7f8ca3; cursor: pointer; font-size: 0.9rem; transition: 0.2s; }
     .filter-btn.active { background: #ffb347; color: #0b0f17; border-color: #ffb347; font-weight: bold; }
 
-    .scoreboard { display: flex; justify-content: space-between; gap: 20px; margin: 15px auto; max-width: 900px; width: 95%; }
+    .scoreboard { display: flex; justify-content: center; gap: 20px; margin: 15px auto; max-width: 900px; width: 95%; }
     .score { background: #151b28; padding: 12px 20px; border-radius: 10px; text-align: center; flex: 1; max-width: 440px; }
     .score-jeremy { border-bottom: 3px solid #4ea1ff; color: #4ea1ff; }
     .score-matt { border-bottom: 3px solid #ffb347; color: #ffb347; }
@@ -22,7 +22,7 @@
     .tab.active { color: #ffb347; font-weight: bold; background: #1c2333; }
 
     table { width: 98%; max-width: 1100px; margin: auto; border-collapse: collapse; table-layout: fixed; }
-    th, td { padding: 8px 4px; text-align: left; overflow: hidden; white-space: nowrap; }
+    th, td { padding: 8px 4px; text-align: left; white-space: nowrap; }
 
     .weapon-grid { max-width: 1400px; margin-bottom: 50px; }
     .weapon-header-cell { text-align: center; padding: 4px; width: 52px; border-bottom: 1px solid #2a3242; }
@@ -31,7 +31,8 @@
     .monster-cell { vertical-align: middle; font-weight: bold; background: rgba(255, 255, 255, 0.02); border-right: 1px solid #1c2333; width: 180px; }
     .sub-row-player { font-size: 0.75rem; height: 30px; font-weight: 600; width: 60px; text-align: center; border-right: 1px solid #1c2333; }
     
-    .time-cell { text-align: center; font-family: 'Courier New', monospace; border-left: 1px solid #1c2333; font-size: 0.7rem; color: #7f8ca3; }
+    /* Fix for YouTube icon cutoff: removed overflow:hidden */
+    .time-cell { text-align: center; font-family: 'Courier New', monospace; border-left: 1px solid #1c2333; font-size: 0.65rem; color: #7f8ca3; }
     
     .time-link { 
       text-decoration: none; 
@@ -64,10 +65,12 @@
     .cell-flex { display: flex; align-items: center; gap: 8px; }
 
     .icon { width: 34px; height: 34px; object-fit: contain; transition: transform 0.2s ease; flex-shrink: 0; }
-    tr:hover .icon { transform: scale(1.25); }
-    .tempered-glow { filter: drop-shadow(0 0 5px rgba(163, 73, 255, 0.6)); }
     
-    /* Medal on the Left Styling */
+    /* Fix for hover effect applying to Matt's rows as well */
+    tr:hover .icon, 
+    tr:has(+ tr:hover) .icon { transform: scale(1.25); }
+
+    .tempered-glow { filter: drop-shadow(0 0 5px rgba(163, 73, 255, 0.6)); }
     .crown-icon { width: 12px; height: 12px; vertical-align: middle; margin-right: 3px; flex-shrink: 0; }
 
     .player.jeremy { color: #4ea1ff; }
@@ -328,7 +331,6 @@ function renderWeaponTimes(filtered, monsterStats) {
     else if(rank === 1) medal = `<img src="${SILVER_CROWN}" class="crown-icon">`;
 
     const timeStr = formatTime(r.timeSecs);
-    // Placed medal on the left of the time/play button
     const content = r.link ? `<span onclick="openVideo('${r.link}')" class="time-link ${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${medal}${timeStr}${PLAY_BUTTON_HTML}</span>` : `<span class="${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${medal}${timeStr}</span>`;
     lookup[`${p}|${mKey}|${r.weapon.toLowerCase()}`] = content;
   });
