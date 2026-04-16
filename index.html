@@ -412,47 +412,67 @@ function switchTab(view, el) {
 
 // ── DATA LOADING ─────────────────────────────────
 async function loadData() {
-  const ts = Date.now();
-  const [runsRes, mRes, wRes] = await Promise.all([
-    fetch(`${SHEET_BASE}&gid=${GID_RUNS}&t=${ts}`).then(r => r.text()),
-    fetch(`${SHEET_BASE}&gid=${GID_MONSTERS}&t=${ts}`).then(r => r.text()),
-    fetch(`${SHEET_BASE}&gid=${GID_WEAPONS}&t=${ts}`).then(r => r.text())
-  ]);
+  const statusEl = document.getElementById('lastUpdated');
+  statusEl.textContent = "Syncing...";
 
-  const runRows = parseCSV(runsRes), mRows = parseCSV(mRes), wRows = parseCSV(wRes);
+  try {
+    const ts = Date.now();
 
-  monsterIcons = {}; monsterTiers = {};
-  mRows.slice(1).forEach(r => {
-    const name = clean(r[1]).toLowerCase();
-    monsterTiers[name] = clean(r[0]);
-    monsterIcons[name] = clean(r[3]);
-  });
+    const [runsRes, mRes, wRes] = await Promise.all([
+      fetch(`${SHEET_BASE}&gid=${GID_RUNS}&t=${ts}`).then(r => r.text()),
+      fetch(`${SHEET_BASE}&gid=${GID_MONSTERS}&t=${ts}`).then(r => r.text()),
+      fetch(`${SHEET_BASE}&gid=${GID_WEAPONS}&t=${ts}`).then(r => r.text())
+    ]);
 
-  weaponIcons = {}; weaponOrder = [];
-  wRows.slice(1).forEach(r => {
-    const w = clean(r[0]);
-    weaponOrder.push(w);
-    weaponIcons[w.toLowerCase()] = clean(r[2]);
-  });
+    const runRows = parseCSV(runsRes);
+    const mRows   = parseCSV(mRes);
+    const wRows   = parseCSV(wRes);
 
-  const headers = runRows[0].map(h => h.toLowerCase().trim());
-  const cP = headers.indexOf('player'),
-        cR = headers.indexOf('run'),
-        cM = headers.indexOf('monster'),
-        cW = headers.indexOf('weapon'),
-        cT = headers.indexOf('duration'),
-        cV = headers.indexOf('link');
+    monsterIcons = {}; 
+    monsterTiers = {};
 
-  allRunsRaw = runRows.slice(1).map(r => ({
-    player: clean(r[cP]),
-    runType: clean(r[cR]),
-    monster: clean(r[cM]),
-    weapon: clean(r[cW]),
-    timeSecs: parseTime(clean(r[cT])),
-    link: clean(r[cV])
-  })).filter(r => r.timeSecs !== null);
+    mRows.slice(1).forEach(r => {
+      const name = clean(r[1]).toLowerCase();
+      monsterTiers[name] = clean(r[0]);
+      monsterIcons[name] = clean(r[3]);
+    });
 
-  render();
+    weaponIcons = {}; 
+    weaponOrder = [];
+
+    wRows.slice(1).forEach(r => {
+      const w = clean(r[0]);
+      weaponOrder.push(w);
+      weaponIcons[w.toLowerCase()] = clean(r[2]);
+    });
+
+    const headers = runRows[0].map(h => h.toLowerCase().trim());
+
+    const cP = headers.indexOf('player'),
+          cR = headers.indexOf('run'),
+          cM = headers.indexOf('monster'),
+          cW = headers.indexOf('weapon'),
+          cT = headers.indexOf('duration'),
+          cV = headers.indexOf('link');
+
+    const freshRuns = runRows.slice(1).map(r => ({
+      player: clean(r[cP]),
+      runType: clean(r[cR]),
+      monster: clean(r[cM]),
+      weapon: clean(r[cW]),
+      timeSecs: parseTime(clean(r[cT])),
+      link: clean(r[cV])
+    })).filter(r => r.timeSecs !== null);
+
+    allRunsRaw = freshRuns;
+
+    render();
+
+    statusEl.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+  } catch (e) {
+    console.error("LOAD ERROR:", e);
+    statusEl.textContent = "Sync failed — retrying...";
+  }
 }
 
 // ── CORE RENDER ──────────────────────────────────
