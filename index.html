@@ -29,34 +29,43 @@
     .weapon-header-cell img { display: block; margin: 0 auto; width: 22px; height: 22px; }
 
     .monster-cell { vertical-align: middle; font-weight: bold; background: rgba(255, 255, 255, 0.02); border-right: 1px solid #1c2333; width: 180px; }
-    .sub-row-player { font-size: 0.75rem; height: 30px; font-weight: 600; width: 60px; text-align: center; border-right: 1px solid #1c2333; }
+    .sub-row-player { font-size: 0.75rem; height: 50px; font-weight: 600; width: 60px; text-align: center; border-right: 1px solid #1c2333; vertical-align: middle; }
     
-    /* Fix for YouTube icon cutoff: removed overflow:hidden */
-    .time-cell { text-align: center; font-family: 'Courier New', monospace; border-left: 1px solid #1c2333; font-size: 0.65rem; color: #7f8ca3; }
+    .time-cell { text-align: center; font-family: 'Courier New', monospace; border-left: 1px solid #1c2333; font-size: 0.7rem; color: #7f8ca3; padding: 4px 1px; }
+    
+    /* Vertically stack time, link, and medal */
+    .cell-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+    }
+
+    .time-val { font-weight: bold; }
     
     .time-link { 
       text-decoration: none; 
-      font-weight: bold; 
       cursor: pointer; 
       display: inline-flex; 
       align-items: center; 
       gap: 3px; 
-      justify-content: center;
-      vertical-align: middle;
+      font-size: 0.6rem;
+      opacity: 0.9;
     }
-    .time-link:hover { text-decoration: underline; }
+    .time-link:hover { text-decoration: underline; opacity: 1; }
     
     .play-svg-container {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 14px; 
-      height: 10px;
+      width: 12px; 
+      height: 8px;
       background-color: #FF0000; 
       border-radius: 2px;
       flex-shrink: 0;
     }
-    .play-svg { width: 7px; height: 7px; fill: white; }
+    .play-svg { width: 6px; height: 6px; fill: white; }
     
     .jeremy-time { color: #4ea1ff !important; }
     .matt-time { color: #ffb347 !important; }
@@ -66,12 +75,12 @@
 
     .icon { width: 34px; height: 34px; object-fit: contain; transition: transform 0.2s ease; flex-shrink: 0; }
     
-    /* Fix for hover effect applying to Matt's rows as well */
+    /* Monster Icon hover fix */
     tr:hover .icon, 
     tr:has(+ tr:hover) .icon { transform: scale(1.25); }
 
     .tempered-glow { filter: drop-shadow(0 0 5px rgba(163, 73, 255, 0.6)); }
-    .crown-icon { width: 12px; height: 12px; vertical-align: middle; margin-right: 3px; flex-shrink: 0; }
+    .crown-icon { width: 14px; height: 14px; display: block; }
 
     .player.jeremy { color: #4ea1ff; }
     .player.matt { color: #ffb347; }
@@ -331,8 +340,14 @@ function renderWeaponTimes(filtered, monsterStats) {
     else if(rank === 1) medal = `<img src="${SILVER_CROWN}" class="crown-icon">`;
 
     const timeStr = formatTime(r.timeSecs);
-    const content = r.link ? `<span onclick="openVideo('${r.link}')" class="time-link ${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${medal}${timeStr}${PLAY_BUTTON_HTML}</span>` : `<span class="${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${medal}${timeStr}</span>`;
-    lookup[`${p}|${mKey}|${r.weapon.toLowerCase()}`] = content;
+    const linkHtml = r.link ? `<span onclick="openVideo('${r.link}')" class="time-link ${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${PLAY_BUTTON_HTML}Watch</span>` : '';
+    
+    lookup[`${p}|${mKey}|${r.weapon.toLowerCase()}`] = `
+      <div class="cell-stack">
+        <span class="time-val ${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${timeStr}</span>
+        ${linkHtml}
+        ${medal}
+      </div>`;
   });
 
   Object.keys(groupedByTier).sort((a, b) => b.localeCompare(a)).forEach(tier => {
