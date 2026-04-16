@@ -24,7 +24,6 @@
     table { width: 98%; max-width: 1100px; margin: auto; border-collapse: collapse; table-layout: fixed; }
     th, td { padding: 8px 4px; text-align: left; white-space: nowrap; }
 
-    /* Weapon Grid alignment fixes */
     .weapon-grid { max-width: 1400px; margin-bottom: 50px; }
     .weapon-header-cell { text-align: center; padding: 4px; width: 52px; border-bottom: 1px solid #2a3242; }
     .weapon-header-cell img { display: block; margin: 0 auto; width: 22px; height: 22px; }
@@ -34,7 +33,6 @@
     
     .time-cell { text-align: center; font-family: 'Courier New', monospace; border-left: 1px solid #1c2333; font-size: 0.7rem; color: #7f8ca3; padding: 4px 1px; vertical-align: middle; }
     
-    /* Fixed height stack for weapon grid to align rows */
     .cell-stack {
       display: flex;
       flex-direction: column;
@@ -48,11 +46,10 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 3px;
-      height: 16px;
+      gap: 5px;
+      height: 18px;
     }
 
-    /* Leaderboard specific alignment */
     .leaderboard-time-wrapper {
       display: inline-flex;
       align-items: center;
@@ -98,14 +95,27 @@
 
     .icon { width: 34px; height: 34px; object-fit: contain; transition: transform 0.2s ease; flex-shrink: 0; }
     
-    /* Enlarge icons ONLY on Weapon Grid hover */
     .weapon-grid tr.row-jeremy:hover .icon, 
     .weapon-grid tr.row-matt:hover .icon { 
       transform: scale(1.25); 
     }
 
     .tempered-glow { filter: drop-shadow(0 0 5px rgba(163, 73, 255, 0.6)); }
-    .crown-icon { width: 14px; height: 14px; flex-shrink: 0; }
+
+    /* POPPING CROWNS */
+    .crown-icon { 
+      width: 18px; 
+      height: 18px; 
+      flex-shrink: 0; 
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    
+    .gold-crown { filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.7)); }
+    .silver-crown { filter: drop-shadow(0 0 3px rgba(192, 192, 192, 0.5)); }
+
+    tr:hover .crown-icon {
+      transform: scale(1.3) rotate(-5deg);
+    }
 
     .player.jeremy { color: #4ea1ff; }
     .player.matt { color: #ffb347; }
@@ -156,7 +166,6 @@ const GID_RUNS = '0';
 const GID_MONSTERS = '73280311';
 const GID_WEAPONS = '2020437619';
 
-// Updated Crown URLs
 const GOLD_CROWN = "https://www.phantombrawlers.com/static/mhwilds/Icons/King%20Crown.png";
 const SILVER_CROWN = "https://www.phantombrawlers.com/static/mhwilds/Icons/Big%20Crown.png";
 
@@ -368,8 +377,8 @@ function renderWeaponTimes(filtered, monsterStats) {
     const rank = monsterStats[mKey].indexOf(r);
     
     let medal = "";
-    if(rank === 0) medal = `<img src="${GOLD_CROWN}" class="crown-icon">`;
-    else if(rank === 1) medal = `<img src="${SILVER_CROWN}" class="crown-icon">`;
+    if(rank === 0) medal = `<img src="${GOLD_CROWN}" class="crown-icon gold-crown">`;
+    else if(rank === 1) medal = `<img src="${SILVER_CROWN}" class="crown-icon silver-crown">`;
 
     const timeStr = formatTime(r.timeSecs);
     const linkHtml = r.link ? `<span onclick="openVideo('${r.link}')" class="time-link">${PLAY_BUTTON_HTML}</span>` : '<div style="height:10px"></div>';
