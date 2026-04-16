@@ -21,44 +21,45 @@
     .tab { flex: 1; padding: 12px; text-align: center; background: #151b28; border-radius: 8px; cursor: pointer; max-width: 445px; }
     .tab.active { color: #ffb347; font-weight: bold; background: #1c2333; }
 
-    table { width: 95%; max-width: 1000px; margin: auto; border-collapse: collapse; table-layout: fixed; }
-    th, td { padding: 8px 6px; text-align: left; overflow: hidden; white-space: nowrap; }
+    /* Tables */
+    table { width: 98%; max-width: 1100px; margin: auto; border-collapse: collapse; table-layout: fixed; }
+    th, td { padding: 8px 4px; text-align: left; overflow: hidden; white-space: nowrap; }
 
-    .weapon-grid { table-layout: fixed; width: 98%; max-width: 1350px; margin-bottom: 50px; }
-    .weapon-header-cell { text-align: center; padding: 4px; width: 42px; min-width: 42px; border-bottom: 1px solid #2a3242; }
+    /* Weapon Grid Specifics */
+    .weapon-grid { max-width: 1400px; margin-bottom: 50px; }
+    .weapon-header-cell { text-align: center; padding: 4px; width: 52px; border-bottom: 1px solid #2a3242; }
     .weapon-header-cell img { display: block; margin: 0 auto; width: 22px; height: 22px; }
 
-    .monster-cell { vertical-align: middle; font-weight: bold; background: rgba(255, 255, 255, 0.02); border-right: 1px solid #1c2333; width: 190px; }
-    .sub-row-player { font-size: 0.8rem; height: 30px; font-weight: 600; width: 75px; }
+    .monster-cell { vertical-align: middle; font-weight: bold; background: rgba(255, 255, 255, 0.02); border-right: 1px solid #1c2333; width: 180px; }
+    .sub-row-player { font-size: 0.75rem; height: 30px; font-weight: 600; width: 60px; text-align: center; border-right: 1px solid #1c2333; }
     
-    .time-cell { text-align: center; font-family: monospace; border-left: 1px solid #1c2333; font-size: 0.75rem; color: #7f8ca3; }
+    .time-cell { text-align: center; font-family: 'Courier New', monospace; border-left: 1px solid #1c2333; font-size: 0.7rem; color: #7f8ca3; }
     
-    /* Play Button SVG Styling */
+    /* Play Button SVG Styling - Moved to End */
     .time-link { 
       text-decoration: none; 
       font-weight: bold; 
       cursor: pointer; 
       display: inline-flex; 
       align-items: center; 
-      gap: 5px; 
+      gap: 3px; 
       justify-content: center;
       vertical-align: middle;
     }
     .time-link:hover { text-decoration: underline; }
-    .play-svg { width: 12px; height: 12px; fill: currentColor; flex-shrink: 0; }
+    .play-svg { width: 10px; height: 10px; fill: currentColor; flex-shrink: 0; }
     
     .jeremy-time { color: #4ea1ff !important; }
     .matt-time { color: #ffb347 !important; }
     
     .tier-row td { padding: 15px 10px 5px 10px; font-weight: bold; color: #ffb347; background: rgba(255, 179, 71, 0.05); border-bottom: 1px solid #2a3242; }
-    .cell-flex { display: flex; align-items: center; gap: 12px; }
+    .cell-flex { display: flex; align-items: center; gap: 8px; }
 
+    /* Visual Polish */
     .icon { width: 34px; height: 34px; object-fit: contain; transition: transform 0.2s ease; flex-shrink: 0; }
     tr:hover .icon { transform: scale(1.25); }
-
     .tempered-glow { filter: drop-shadow(0 0 5px rgba(163, 73, 255, 0.6)); }
-
-    .crown-icon { width: 15px; height: 15px; vertical-align: middle; margin-left: 2px; flex-shrink: 0; }
+    .crown-icon { width: 14px; height: 14px; vertical-align: middle; margin-left: 2px; flex-shrink: 0; }
 
     .player.jeremy { color: #4ea1ff; }
     .player.matt { color: #ffb347; }
@@ -112,7 +113,7 @@ const GID_WEAPONS = '2020437619';
 const GOLD_CROWN = "https://cdn-icons-png.flaticon.com/512/2583/2583344.png";
 const SILVER_CROWN = "https://cdn-icons-png.flaticon.com/512/2583/2583350.png";
 
-// SVG Play Icon String
+// Play Button SVG
 const PLAY_SVG = `<svg class="play-svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
 
 let allRunsRaw = [];
@@ -269,19 +270,19 @@ function renderLeaderboard(filtered, monsterStats) {
   document.getElementById('jeremyCount').textContent = jW;
   document.getElementById('mattCount').textContent = mW;
 
-  let html = `<table><thead><tr><th style="width:220px">Monster</th><th>Player</th><th>Weapon</th><th style="text-align:right">Time</th></tr></thead><tbody>`;
+  let html = `<table><thead><tr><th style="width:200px">Monster</th><th>Player</th><th>Weapon</th><th style="text-align:right">Time</th></tr></thead><tbody>`;
   Object.keys(grouped).sort((a, b) => b.localeCompare(a)).forEach(tier => {
     html += `<tr class="tier-row"><td colspan="4">${tier}</td></tr>`;
     grouped[tier].forEach(r => {
       const isJeremy = r.player.toLowerCase().includes('jeremy');
       const timeStr = formatTime(r.timeSecs);
       const isTempered = r.monster.toLowerCase().includes('tempered');
-      const timeHtml = r.link ? `<span onclick="openVideo('${r.link}')" class="time-link ${isJeremy ? 'jeremy-time' : 'matt-time'}">${PLAY_SVG}${timeStr}</span>` : `<span class="${isJeremy ? 'jeremy-time' : 'matt-time'}">${timeStr}</span>`;
+      const timeHtml = r.link ? `<span onclick="openVideo('${r.link}')" class="time-link ${isJeremy ? 'jeremy-time' : 'matt-time'}">${timeStr}${PLAY_SVG}</span>` : `<span class="${isJeremy ? 'jeremy-time' : 'matt-time'}">${timeStr}</span>`;
       
       html += `<tr class="row-${isJeremy ? 'jeremy' : 'matt'}">
         <td><div class="cell-flex">${monsterIcons[r.monster.toLowerCase()] ? `<img src="${monsterIcons[r.monster.toLowerCase()]}" class="icon ${isTempered ? 'tempered-glow' : ''}">` : ''}${r.monster}</div></td>
         <td class="player ${isJeremy ? 'jeremy' : 'matt'}">${r.player}</td>
-        <td><div class="cell-flex">${weaponIcons[r.weapon.toLowerCase()] ? `<img src="${weaponIcons[r.weapon.toLowerCase()]}" class="icon" style="width:20px;height:20px">` : ''}${r.weapon}</div></td>
+        <td><div class="cell-flex">${weaponIcons[r.weapon.toLowerCase()] ? `<img src="${weaponIcons[r.weapon.toLowerCase()]}" class="icon" style="width:18px;height:18px">` : ''}${r.weapon}</div></td>
         <td style="text-align:right">${timeHtml}</td>
       </tr>`;
     });
@@ -298,7 +299,7 @@ function renderWeaponTimes(filtered, monsterStats) {
     groupedByTier[t].push(m);
   });
 
-  let html = `<table class="weapon-grid"><thead><tr><th style="width:190px">Monster</th><th style="width:75px"></th>`;
+  let html = `<table class="weapon-grid"><thead><tr><th style="width:180px">Monster</th><th style="width:60px"></th>`;
   weaponOrder.forEach(w => {
     const icon = weaponIcons[w.toLowerCase()];
     html += `<th class="weapon-header-cell">${icon ? `<img src="${icon}" title="${w}">` : w}</th>`;
@@ -315,7 +316,7 @@ function renderWeaponTimes(filtered, monsterStats) {
     else if(rank === 1) crown = `<img src="${SILVER_CROWN}" class="crown-icon">`;
 
     const timeStr = formatTime(r.timeSecs);
-    const content = r.link ? `<span onclick="openVideo('${r.link}')" class="time-link ${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${PLAY_SVG}${timeStr}</span>` : `<span class="${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${timeStr}</span>`;
+    const content = r.link ? `<span onclick="openVideo('${r.link}')" class="time-link ${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${timeStr}${PLAY_SVG}</span>` : `<span class="${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${timeStr}</span>`;
     lookup[`${p}|${mKey}|${r.weapon.toLowerCase()}`] = content + crown;
   });
 
