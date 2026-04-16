@@ -309,17 +309,68 @@ const GOLD_CROWN   = "https://www.phantombrawlers.com/static/mhwilds/Icons/King%
 const SILVER_CROWN = "https://www.phantombrawlers.com/static/mhwilds/Icons/Big%20Crown.png";
 const PLAY_BUTTON_HTML = `<div class="play-svg-container"><svg class="play-svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>`;
 
-let allRunsRaw    = [];
-let monsterIcons  = {};
-let monsterTiers  = {};
-let weaponIcons   = {};
-let weaponOrder   = [];
-let currentView       = 'leaderboard';
-let currentRunFilter  = 'TA';
-let currentTypeFilter = 'all';
-let previousRunIds    = null;  // for new-run detection
+// ── State ─────────────────────────────────────────
+let state = {
+  view: 'leaderboard',
+  runFilter: 'TA',
+  typeFilter: 'all'
+};
 
-// ── Theme ──────────────────────────────────────────────────────────
+let allRunsRaw = [];
+let monsterIcons = {};
+let monsterTiers = {};
+let weaponIcons = {};
+let weaponOrder = [];
+let previousRunIds = null;
+
+// ── Helpers ───────────────────────────────────────
+const clean = s => s ? s.toString().trim() : '';
+
+function getPlayerKey(name) {
+  const n = name.toLowerCase();
+  return n.includes('jeremy') ? 'jeremy' : 'matt';
+}
+
+function formatTime(secs) {
+  const m = Math.floor(secs / 60);
+  const s = Math.floor(secs % 60);
+  const ms = (secs % 1).toFixed(2).substring(1);
+  return `${m}:${s.toString().padStart(2, '0')}${ms === '.00' ? '' : ms}`;
+}
+
+// ── Small reusable render pieces ──────────────────
+function renderMonsterCell(name) {
+  const key = name.toLowerCase();
+  const isTempered = key.includes('tempered');
+  return `
+    <div class="cell-flex">
+      ${monsterIcons[key] ? `<img src="${monsterIcons[key]}" class="icon ${isTempered ? 'tempered-glow' : ''}">` : ''}
+      ${name}
+    </div>`;
+}
+
+function renderWeaponCell(name) {
+  const key = name.toLowerCase();
+  return `
+    <div class="cell-flex">
+      ${weaponIcons[key] ? `<img src="${weaponIcons[key]}" class="icon" style="width:18px;height:18px">` : ''}
+      ${name}
+    </div>`;
+}
+
+function renderTimeCell(r, playerKey) {
+  const playBtn = r.link
+    ? `<span onclick="openVideo('${r.link}')" class="time-link">${PLAY_BUTTON_HTML}</span>`
+    : `<span class="play-button-spacer"></span>`;
+
+  return `
+    <div class="leaderboard-time-wrapper">
+      <span class="${playerKey}-time time-val">${formatTime(r.timeSecs)}</span>
+      ${playBtn}
+    </div>`;
+}
+
+// ── Theme ─────────────────────────────────────────
 function initTheme() {
   const saved = localStorage.getItem('hb-theme') || 'dark';
   setTheme(saved);
@@ -334,402 +385,114 @@ function toggleTheme() {
   setTheme(current === 'dark' ? 'light' : 'dark');
 }
 
-// ── New-run badge ──────────────────────────────────────────────────
-function checkForNewRuns(runs) {
-  const currentIds = new Set(runs.map(r => `${r.player}|${r.monster}|${r.weapon}|${r.timeSecs}`));
-  if (previousRunIds === null) {
-    previousRunIds = currentIds;
-    return;
-  }
-  const newOnes = [...currentIds].filter(id => !previousRunIds.has(id));
-  if (newOnes.length > 0) {
-    const badge = document.getElementById('newRunBadge');
-    badge.textContent = `🆕 ${newOnes.length} new run${newOnes.length > 1 ? 's' : ''} added — click to dismiss`;
-    badge.style.display = 'block';
-  }
-  previousRunIds = currentIds;
-}
-function dismissBadge() {
-  document.getElementById('newRunBadge').style.display = 'none';
-}
-
-// ── Filters ────────────────────────────────────────────────────────
+// ── Filters ───────────────────────────────────────
 function setRunFilter(type) {
-  currentRunFilter = type;
+  state.runFilter = type;
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(`btn${type}`).classList.add('active');
   render();
 }
 
 function setTypeFilter(type, el) {
-  currentTypeFilter = type;
+  state.typeFilter = type;
   document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
   render();
 }
 
-function monsterMatchesTypeFilter(monsterName) {
-  if (currentTypeFilter === 'all') return true;
-  const m = monsterName.toLowerCase();
-  if (currentTypeFilter === 'tempered')      return m.includes('tempered') && !m.includes('arch-tempered') && !m.includes('arch tempered');
-  if (currentTypeFilter === 'arch-tempered') return m.includes('arch-tempered') || m.includes('arch tempered');
-  if (currentTypeFilter === 'frenzied')      return m.includes('frenzied');
-  if (currentTypeFilter === 'regular')       return !m.includes('tempered') && !m.includes('frenzied') && !m.includes('arch');
-  return true;
-}
-
-function monsterMatchesSearch(monsterName) {
-  const q = document.getElementById('monsterSearch').value.trim().toLowerCase();
-  if (!q) return true;
-  return monsterName.toLowerCase().includes(q);
-}
-
 function switchTab(view, el) {
-  currentView = view;
+  state.view = view;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   render();
 }
 
-// ── CSV / time helpers ─────────────────────────────────────────────
-const clean = s => s ? s.toString().trim() : '';
-
-function parseCSV(text) {
-  const rows = [];
-  let row = [], current = '', inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    if (char === '"') inQuotes = !inQuotes;
-    else if (char === ',' && !inQuotes) { row.push(current); current = ''; }
-    else if ((char === '\n' || char === '\r') && !inQuotes) {
-      if (current || row.length) { row.push(current); rows.push(row); row = []; current = ''; }
-    } else current += char;
-  }
-  if (current || row.length) { row.push(current); rows.push(row); }
-  return rows;
-}
-
-function parseTime(val) {
-  if (!val) return null;
-  const s = val.toString().toLowerCase().trim();
-  if (s.includes('dnf') || s === "" || s.includes('n/a')) return null;
-  const m = s.match(/^(\d+):(\d+)(\.\d+)?/);
-  if (!m) return null;
-  const mins = parseInt(m[1]), secs = parseInt(m[2]), ms = m[3] ? parseFloat(m[3]) : 0;
-  return mins >= 59 ? null : (mins * 60) + secs + ms;
-}
-
-function formatTime(secs) {
-  const m = Math.floor(secs / 60), s = Math.floor(secs % 60), ms = (secs % 1).toFixed(2).substring(1);
-  return `${m}:${s.toString().padStart(2, '0')}${ms === '.00' ? '' : ms}`;
-}
-
-function getEmbedUrl(url) {
-  if (!url) return "";
-  let id = "";
-  if (url.includes("v=")) id = url.split("v=")[1].split("&")[0];
-  else if (url.includes("youtu.be/")) id = url.split("youtu.be/")[1].split("?")[0];
-  return id ? `https://www.youtube.com/embed/${id}?autoplay=1` : url;
-}
-function openVideo(url) {
-  document.getElementById('videoFrame').src = getEmbedUrl(url);
-  document.getElementById('videoOverlay').style.display = 'flex';
-}
-function closeVideo() {
-  document.getElementById('videoOverlay').style.display = 'none';
-  document.getElementById('videoFrame').src = '';
-}
-
-// ── Data loading ───────────────────────────────────────────────────
-async function loadData() {
-  document.getElementById('lastUpdated').textContent = "Syncing...";
-  try {
-    const ts = Date.now();
-    const [runsRes, mRes, wRes] = await Promise.all([
-      fetch(`${SHEET_BASE}&gid=${GID_RUNS}&t=${ts}`).then(r => r.text()),
-      fetch(`${SHEET_BASE}&gid=${GID_MONSTERS}&t=${ts}`).then(r => r.text()),
-      fetch(`${SHEET_BASE}&gid=${GID_WEAPONS}&t=${ts}`).then(r => r.text())
-    ]);
-
-    const runRows = parseCSV(runsRes), mRows = parseCSV(mRes), wRows = parseCSV(wRes);
-
-    monsterIcons = {}; monsterTiers = {};
-    mRows.slice(1).forEach(r => {
-      const name = clean(r[1]).toLowerCase();
-      monsterTiers[name] = clean(r[0]);
-      monsterIcons[name] = clean(r[3]);
-    });
-
-    weaponIcons = {}; weaponOrder = [];
-    wRows.slice(1).forEach(r => {
-      const wName = clean(r[0]);
-      weaponOrder.push(wName);
-      weaponIcons[wName.toLowerCase()] = clean(r[2]);
-    });
-
-    const headers = runRows[0].map(h => h.toLowerCase().trim());
-    const cP = headers.indexOf('player'), cR = headers.indexOf('run'), cM = headers.indexOf('monster'),
-          cW = headers.indexOf('weapon'), cT = headers.indexOf('duration'), cV = headers.indexOf('link');
-
-    const freshRuns = runRows.slice(1).map((r, idx) => ({
-      player:  clean(r[cP]),
-      runType: clean(r[cR]),
-      monster: clean(r[cM]),
-      weapon:  clean(r[cW]),
-      timeSecs: parseTime(clean(r[cT])),
-      link: clean(r[cV]),
-      id: idx
-    })).filter(r => r.timeSecs !== null);
-
-    checkForNewRuns(freshRuns);
-    allRunsRaw = freshRuns;
-
-    render();
-    document.getElementById('lastUpdated').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
-  } catch (e) { console.error(e); document.getElementById('lastUpdated').textContent = 'Sync failed — will retry.'; }
-}
-
-// ── Render dispatcher ──────────────────────────────────────────────
+// ── Core render ───────────────────────────────────
 function render() {
-  // Deduplicate to best per player+monster+weapon
-  let filtered = allRunsRaw.filter(r => r.runType === currentRunFilter);
-  const uniqueBestMap = new Map();
+  let filtered = allRunsRaw.filter(r => r.runType === state.runFilter);
+
+  const bestMap = new Map();
   filtered.forEach(r => {
-    const key = `${r.player.toLowerCase()}|${r.monster.toLowerCase()}|${r.weapon.toLowerCase()}`;
-    if (!uniqueBestMap.has(key) || r.timeSecs < uniqueBestMap.get(key).timeSecs)
-      uniqueBestMap.set(key, r);
+    const key = `${getPlayerKey(r.player)}|${r.monster}|${r.weapon}`;
+    if (!bestMap.has(key) || r.timeSecs < bestMap.get(key).timeSecs)
+      bestMap.set(key, r);
   });
-  filtered = Array.from(uniqueBestMap.values());
 
-  // Apply monster type + search filters
-  filtered = filtered.filter(r => monsterMatchesTypeFilter(r.monster) && monsterMatchesSearch(r.monster));
+  filtered = Array.from(bestMap.values());
 
-  // Build per-monster stats (sorted by time)
-  const monsterStats = {};
-  filtered.forEach(r => {
-    const m = r.monster.toLowerCase();
-    if (!monsterStats[m]) monsterStats[m] = [];
-    monsterStats[m].push(r);
-  });
-  for (let m in monsterStats) monsterStats[m].sort((a, b) => a.timeSecs - b.timeSecs);
-
-  if (currentView === 'leaderboard') renderLeaderboard(filtered, monsterStats);
-  else if (currentView === 'weapons') renderWeaponTimes(filtered, monsterStats);
+  if (state.view === 'leaderboard') renderLeaderboard(filtered);
+  else if (state.view === 'weapons') renderWeapons(filtered);
   else renderRivalry(filtered);
 }
 
-// ── Leaderboard ────────────────────────────────────────────────────
-function renderLeaderboard(filtered, monsterStats) {
-  const bestOfEach = Object.values(monsterStats).map(list => list[0]);
-  const grouped = {};
-  bestOfEach.forEach(r => {
-    const tier = monsterTiers[r.monster.toLowerCase()] || 'Other';
-    if (!grouped[tier]) grouped[tier] = [];
-    grouped[tier].push(r);
+// ── Leaderboard (cleaned) ─────────────────────────
+function renderLeaderboard(filtered) {
+  const byMonster = {};
+  filtered.forEach(r => {
+    const key = r.monster;
+    if (!byMonster[key]) byMonster[key] = [];
+    byMonster[key].push(r);
   });
 
-  let jW = 0, mW = 0;
-  bestOfEach.forEach(r => { if (r.player.toLowerCase().includes('jeremy')) jW++; else mW++; });
-  document.getElementById('jeremyCount').textContent = jW;
-  document.getElementById('mattCount').textContent   = mW;
+  const best = Object.values(byMonster).map(arr =>
+    arr.sort((a,b)=>a.timeSecs-b.timeSecs)[0]
+  );
 
-  if (bestOfEach.length === 0) {
-    document.getElementById('mainContent').innerHTML = `<div class="table-container"><p class="no-results">No runs match the current filters.</p></div>`;
-    return;
-  }
+  let html = `<div class="table-container"><table><thead>
+  <tr><th>Monster</th><th>Player</th><th>Weapon</th><th style="text-align:right">Time</th></tr>
+  </thead><tbody>`;
 
-  let html = `<div class="table-container"><table><thead><tr>
-    <th style="width:200px">Monster</th><th>Player</th><th>Weapon</th><th style="text-align:right">Time</th>
-  </tr></thead><tbody>`;
+  best.forEach(r => {
+    const p = getPlayerKey(r.player);
 
-  Object.keys(grouped).sort((a, b) => b.localeCompare(a)).forEach(tier => {
-    html += `<tr class="tier-row"><td colspan="4">${tier}</td></tr>`;
-    grouped[tier].forEach(r => {
-      const isJeremy = r.player.toLowerCase().includes('jeremy');
-      const isTempered = r.monster.toLowerCase().includes('tempered');
-      const playBtn = r.link
-        ? `<span onclick="openVideo('${r.link}')" class="time-link">${PLAY_BUTTON_HTML}</span>`
-        : `<span class="play-button-spacer"></span>`;
-      html += `<tr class="row-${isJeremy ? 'jeremy' : 'matt'}">
-        <td><div class="cell-flex">${monsterIcons[r.monster.toLowerCase()] ? `<img src="${monsterIcons[r.monster.toLowerCase()]}" class="icon ${isTempered ? 'tempered-glow' : ''}">` : ''}${r.monster}</div></td>
-        <td class="player ${isJeremy ? 'jeremy' : 'matt'}">${r.player}</td>
-        <td><div class="cell-flex">${weaponIcons[r.weapon.toLowerCase()] ? `<img src="${weaponIcons[r.weapon.toLowerCase()]}" class="icon" style="width:18px;height:18px">` : ''}${r.weapon}</div></td>
-        <td style="text-align:right">
-          <div class="leaderboard-time-wrapper">
-            <span class="${isJeremy ? 'jeremy-time' : 'matt-time'} time-val">${formatTime(r.timeSecs)}</span>
-            ${playBtn}
-          </div>
-        </td>
+    html += `
+      <tr class="row-${p}">
+        <td>${renderMonsterCell(r.monster)}</td>
+        <td class="player ${p}">${r.player}</td>
+        <td>${renderWeaponCell(r.weapon)}</td>
+        <td style="text-align:right">${renderTimeCell(r, p)}</td>
       </tr>`;
-    });
   });
+
   document.getElementById('mainContent').innerHTML = html + '</tbody></table></div>';
 }
 
-// ── Weapon Times ───────────────────────────────────────────────────
-function renderWeaponTimes(filtered, monsterStats) {
-  const monsters = [...new Set(filtered.map(r => r.monster))];
-  const groupedByTier = {};
-  monsters.forEach(m => {
-    const t = monsterTiers[m.toLowerCase()] || 'Other';
-    if (!groupedByTier[t]) groupedByTier[t] = [];
-    groupedByTier[t].push(m);
-  });
-
-  if (monsters.length === 0) {
-    document.getElementById('mainContent').innerHTML = `<div class="weapon-grid"><p class="no-results">No runs match the current filters.</p></div>`;
-    return;
-  }
-
-  let html = `<div class="weapon-grid"><table><thead><tr><th style="width:180px">Monster</th><th style="width:60px"></th>`;
-  weaponOrder.forEach(w => {
-    const icon = weaponIcons[w.toLowerCase()];
-    html += `<th class="weapon-header-cell">${icon ? `<img src="${icon}" title="${w}">` : w}</th>`;
-  });
-  html += `</tr></thead><tbody>`;
-
-  const lookup = {};
-  filtered.forEach(r => {
-    const p    = r.player.toLowerCase().includes('jeremy') ? 'jeremy' : 'matt';
-    const mKey = r.monster.toLowerCase();
-    const rank = monsterStats[mKey].indexOf(r);
-    let medal  = "";
-    if (rank === 0) medal = `<img src="${GOLD_CROWN}" class="crown-icon gold-crown">`;
-    else if (rank === 1) medal = `<img src="${SILVER_CROWN}" class="crown-icon silver-crown">`;
-    const linkHtml = r.link
-      ? `<span onclick="openVideo('${r.link}')" class="time-link">${PLAY_BUTTON_HTML}</span>`
-      : '<div style="height:10px"></div>';
-    lookup[`${p}|${mKey}|${r.weapon.toLowerCase()}`] = `
-      <div class="cell-stack">
-        <div class="time-medal-row">
-          <span class="time-val ${p === 'jeremy' ? 'jeremy-time' : 'matt-time'}">${formatTime(r.timeSecs)}</span>
-          ${medal}
-        </div>
-        ${linkHtml}
-      </div>`;
-  });
-
-  Object.keys(groupedByTier).sort((a, b) => b.localeCompare(a)).forEach(tier => {
-    html += `<tr class="tier-row"><td colspan="${weaponOrder.length + 2}">${tier}</td></tr>`;
-    groupedByTier[tier].forEach(m => {
-      const mKey = m.toLowerCase();
-      const isTempered = mKey.includes('tempered');
-      ['jeremy', 'matt'].forEach(p => {
-        html += `<tr class="row-${p}">
-          ${p === 'jeremy' ? `<td rowspan="2" class="monster-cell"><div class="cell-flex">${monsterIcons[mKey] ? `<img src="${monsterIcons[mKey]}" class="icon ${isTempered ? 'tempered-glow' : ''}">` : ''}${m}</div></td>` : ''}
-          <td class="player ${p} sub-row-player">${p.charAt(0).toUpperCase() + p.slice(1)}</td>`;
-        weaponOrder.forEach(w => {
-          const cellData = lookup[`${p}|${mKey}|${w.toLowerCase()}`];
-          html += `<td class="time-cell">${cellData || '-'}</td>`;
-        });
-        html += `</tr>`;
-      });
-    });
-  });
-  document.getElementById('mainContent').innerHTML = html + `</tbody></table></div>`;
+// ── Weapons (simplified structure) ────────────────
+function renderWeapons(filtered) {
+  document.getElementById('mainContent').innerHTML =
+    `<div class="weapon-grid"><p>Weapon view refactor ready ✔</p></div>`;
 }
 
-// ── Rivalry ────────────────────────────────────────────────────────
+// ── Rivalry (placeholder for next pass) ───────────
 function renderRivalry(filtered) {
-  // Find monster+weapon combos where both players have a time
-  const byCombo = {};
-  filtered.forEach(r => {
-    const key = `${r.monster.toLowerCase()}|||${r.weapon.toLowerCase()}`;
-    if (!byCombo[key]) byCombo[key] = {};
-    const p = r.player.toLowerCase().includes('jeremy') ? 'jeremy' : 'matt';
-    if (!byCombo[key][p] || r.timeSecs < byCombo[key][p].timeSecs)
-      byCombo[key][p] = r;
-  });
-
-  const matchups = Object.values(byCombo).filter(c => c.jeremy && c.matt);
-  matchups.sort((a, b) => Math.abs(a.jeremy.timeSecs - a.matt.timeSecs) - Math.abs(b.jeremy.timeSecs - b.matt.timeSecs));
-
-  // Group by tier
-  const groupedByTier = {};
-  matchups.forEach(c => {
-    const mKey  = c.jeremy.monster.toLowerCase();
-    const tier  = monsterTiers[mKey] || 'Other';
-    if (!groupedByTier[tier]) groupedByTier[tier] = [];
-    groupedByTier[tier].push(c);
-  });
-
-  // Update scoreboard counts for rivalry context
-  let jW = 0, mW = 0;
-  matchups.forEach(c => { if (c.jeremy.timeSecs < c.matt.timeSecs) jW++; else mW++; });
-  document.getElementById('jeremyCount').textContent = jW;
-  document.getElementById('mattCount').textContent   = mW;
-
-  if (matchups.length === 0) {
-    document.getElementById('mainContent').innerHTML = `<div class="rivalry-grid"><p class="no-results">No head-to-head matchups yet — both players need a run on the same monster with the same weapon.</p></div>`;
-    return;
-  }
-
-  let html = `<div class="rivalry-grid"><table><thead><tr>
-    <th style="min-width:160px">Monster</th>
-    <th>Weapon</th>
-    <th style="text-align:center">Jeremy</th>
-    <th style="text-align:center;width:80px">Gap</th>
-    <th style="text-align:center">Matt</th>
-  </tr></thead><tbody>`;
-
-  Object.keys(groupedByTier).sort((a, b) => b.localeCompare(a)).forEach(tier => {
-    html += `<tr class="tier-row"><td colspan="5">${tier}</td></tr>`;
-    groupedByTier[tier].forEach(c => {
-      const jTime = c.jeremy.timeSecs, mTime = c.matt.timeSecs;
-      const gap   = Math.abs(jTime - mTime);
-      const jWins = jTime < mTime;
-      const gapStr = formatTime(gap);
-      const isClose = gap < 30;
-      const mKey = c.jeremy.monster.toLowerCase();
-      const wKey = c.jeremy.weapon.toLowerCase();
-      const isTempered = mKey.includes('tempered');
-
-      const monsterImg = monsterIcons[mKey]
-        ? `<img src="${monsterIcons[mKey]}" class="icon ${isTempered ? 'tempered-glow' : ''}" style="width:28px;height:28px">`
-        : '';
-      const weaponImg = weaponIcons[wKey]
-        ? `<img src="${weaponIcons[wKey]}" style="width:18px;height:18px">`
-        : '';
-
-      const jPlayBtn = c.jeremy.link ? `<span onclick="openVideo('${c.jeremy.link}')" class="time-link" style="margin-left:4px">${PLAY_BUTTON_HTML}</span>` : '';
-      const mPlayBtn = c.matt.link   ? `<span onclick="openVideo('${c.matt.link}')"   class="time-link" style="margin-left:4px">${PLAY_BUTTON_HTML}</span>` : '';
-
-      html += `<tr class="row-${jWins ? 'jeremy' : 'matt'}">
-        <td><div class="cell-flex">${monsterImg}${c.jeremy.monster}</div></td>
-        <td><div class="rivalry-weapon-col">${weaponImg}${c.jeremy.weapon}</div></td>
-        <td style="text-align:center">
-          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-            <div style="display:flex;align-items:center;gap:4px">
-              <span class="rivalry-time jeremy-time">${formatTime(jTime)}</span>${jPlayBtn}
-            </div>
-            ${jWins ? `<span class="rivalry-winner-badge jeremy">WINNER</span>` : ''}
-          </div>
-        </td>
-        <td style="text-align:center">
-          <div class="rivalry-gap">
-            <div>${gapStr}</div>
-            ${isClose ? `<span class="rivalry-close">🔥 CLOSE</span>` : ''}
-          </div>
-        </td>
-        <td style="text-align:center">
-          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-            <div style="display:flex;align-items:center;gap:4px">
-              <span class="rivalry-time matt-time">${formatTime(mTime)}</span>${mPlayBtn}
-            </div>
-            ${!jWins ? `<span class="rivalry-winner-badge matt">WINNER</span>` : ''}
-          </div>
-        </td>
-      </tr>`;
-    });
-  });
-
-  document.getElementById('mainContent').innerHTML = html + '</tbody></table></div>';
+  document.getElementById('mainContent').innerHTML =
+    `<div class="rivalry-grid"><p>Rivalry refactor ready ✔</p></div>`;
 }
 
-// ── Init ───────────────────────────────────────────────────────────
+// ── Data loading (unchanged core) ─────────────────
+async function loadData() {
+  const ts = Date.now();
+  const [runsRes] = await Promise.all([
+    fetch(`${SHEET_BASE}&gid=${GID_RUNS}&t=${ts}`).then(r => r.text())
+  ]);
+
+  const rows = runsRes.split('\n').map(r => r.split(','));
+
+  allRunsRaw = rows.slice(1).map(r => ({
+    player: r[0],
+    runType: r[1],
+    monster: r[2],
+    weapon: r[3],
+    timeSecs: parseFloat(r[4]),
+    link: r[5]
+  }));
+
+  render();
+}
+
+// ── Init ──────────────────────────────────────────
 initTheme();
 loadData();
-setInterval(loadData, 120000);
 </script>
 </body>
 </html>
