@@ -287,7 +287,7 @@
     height: 21px;
     display: block;
     flex-shrink: 0;
-    transform: translateY(-1px);
+    transform: translateY(-3px);
   }
 
   .tab-icon-stopwatch {
@@ -1065,8 +1065,9 @@ function renderRivalry(filtered) {
     const key = `${r.monster.toLowerCase()}|||${r.weapon.toLowerCase()}`;
     if (!byCombo[key]) byCombo[key] = {};
     const p = r.player.toLowerCase().includes('jeremy') ? 'jeremy' : 'matt';
-    if (!byCombo[key][p] || r.timeSecs < byCombo[key][p].timeSecs)
+    if (!byCombo[key][p] || r.timeSecs < byCombo[key][p].timeSecs) {
       byCombo[key][p] = r;
+    }
   });
 
   const matchups = Object.values(byCombo).filter(c => c.jeremy && c.matt);
@@ -1081,12 +1082,15 @@ function renderRivalry(filtered) {
   });
 
   let jW = 0, mW = 0;
-  matchups.forEach(c => { if (c.jeremy.timeSecs < c.matt.timeSecs) jW++; else mW++; });
+  matchups.forEach(c => {
+    if (c.jeremy.timeSecs < c.matt.timeSecs) jW++;
+    else mW++;
+  });
   document.getElementById('jeremyCount').textContent = jW;
-  document.getElementById('mattCount').textContent   = mW;
+  document.getElementById('mattCount').textContent = mW;
 
   if (matchups.length === 0) {
-    document.getElementById('mainContent').innerHTML = `<div class="rivalry-grid"><p class="no-results">No head-to-head matchups yet — both players need a run on the same monster with the same weapon.</p></div>`;
+    document.getElementById('mainContent').innerHTML = `<div class="rivalry-grid"><p class="no-results">No head-to-head matchups yet - both players need a run on the same monster with the same weapon.</p></div>`;
     return;
   }
 
@@ -1100,62 +1104,91 @@ function renderRivalry(filtered) {
 
   Object.keys(groupedByTier).sort((a, b) => b.localeCompare(a)).forEach(tier => {
     html += `<tr class="tier-row"><td colspan="5">${tier}</td></tr>`;
+
+    const monsterGroups = {};
     groupedByTier[tier].forEach(c => {
-      const jTime  = c.jeremy.timeSecs, mTime = c.matt.timeSecs;
-      const gap    = Math.abs(jTime - mTime);
-      const jWins  = jTime < mTime;
-      const isClose = gap < 30;
-      const mKey   = c.jeremy.monster.toLowerCase();
-      const wKey   = c.jeremy.weapon.toLowerCase();
-      const isTempered = mKey.includes('tempered');
+      const monsterKey = c.jeremy.monster.toLowerCase();
+      if (!monsterGroups[monsterKey]) monsterGroups[monsterKey] = [];
+      monsterGroups[monsterKey].push(c);
+    });
 
-      const monsterImg = monsterIcons[mKey]
-        ? `<img src="${monsterIcons[mKey]}" class="icon ${isTempered ? 'tempered-glow' : ''}" style="width:28px;height:28px">`
-        : '';
-      const weaponImg = weaponIcons[wKey]
-        ? `<img src="${weaponIcons[wKey]}" style="width:18px;height:18px">`
-        : '';
+    Object.values(monsterGroups).forEach(monsterMatchups => {
+      monsterMatchups.sort((a, b) => a.jeremy.weapon.localeCompare(b.jeremy.weapon));
 
-      const jCrown = jWins  ? `<img src="${GOLD_CROWN}" class="crown-icon gold-crown">` : `<span style="display:inline-block;width:22px"></span>`;
-      const mCrown = !jWins ? `<img src="${GOLD_CROWN}" class="crown-icon gold-crown">` : `<span style="display:inline-block;width:22px"></span>`;
+      monsterMatchups.forEach((c, index) => {
+        const jTime = c.jeremy.timeSecs;
+        const mTime = c.matt.timeSecs;
+        const gap = Math.abs(jTime - mTime);
+        const jWins = jTime < mTime;
+        const isClose = gap < 30;
+        const mKey = c.jeremy.monster.toLowerCase();
+        const wKey = c.jeremy.weapon.toLowerCase();
+        const isTempered = mKey.includes('tempered');
 
-      const jPlayBtn = c.jeremy.link ? `<span onclick="openVideo('${c.jeremy.link}')" class="time-link">${PLAY_BUTTON_HTML}</span>` : `<span class="play-button-spacer"></span>`;
-      const mPlayBtn = c.matt.link   ? `<span onclick="openVideo('${c.matt.link}')"   class="time-link">${PLAY_BUTTON_HTML}</span>` : `<span class="play-button-spacer"></span>`;
+        const monsterImg = monsterIcons[mKey]
+          ? `<img src="${monsterIcons[mKey]}" class="icon ${isTempered ? 'tempered-glow' : ''}" style="width:28px;height:28px">`
+          : '';
+        const weaponImg = weaponIcons[wKey]
+          ? `<img src="${weaponIcons[wKey]}" style="width:18px;height:18px">`
+          : '';
 
-      html += `<tr class="row-${jWins ? 'jeremy' : 'matt'}">
-        <td><div class="cell-flex">${monsterImg}${c.jeremy.monster}</div></td>
-        <td><div class="rivalry-weapon-col">${weaponImg}${c.jeremy.weapon}</div></td>
-        <td style="text-align:center">
-          <div class="rivalry-cell">
-            <div class="rivalry-time-row">
-              <span class="rivalry-time-fixed jeremy-time">${formatTime(jTime)}</span>
-              ${jCrown}
+        const jCrown = jWins
+          ? `<img src="${GOLD_CROWN}" class="crown-icon gold-crown">`
+          : `<span style="display:inline-block;width:22px"></span>`;
+        const mCrown = !jWins
+          ? `<img src="${GOLD_CROWN}" class="crown-icon gold-crown">`
+          : `<span style="display:inline-block;width:22px"></span>`;
+
+        const jPlayBtn = c.jeremy.link
+          ? `<span onclick="openVideo('${c.jeremy.link}')" class="time-link">${PLAY_BUTTON_HTML}</span>`
+          : `<span class="play-button-spacer"></span>`;
+        const mPlayBtn = c.matt.link
+          ? `<span onclick="openVideo('${c.matt.link}')" class="time-link">${PLAY_BUTTON_HTML}</span>`
+          : `<span class="play-button-spacer"></span>`;
+
+        html += `<tr class="row-${jWins ? 'jeremy' : 'matt'}">`;
+
+        if (index === 0) {
+          html += `<td rowspan="${monsterMatchups.length}" style="vertical-align: middle;"><div class="cell-flex">${monsterImg}${c.jeremy.monster}</div></td>`;
+        }
+
+        html += `
+          <td><div class="rivalry-weapon-col">${weaponImg}${c.jeremy.weapon}</div></td>
+          <td style="text-align:center">
+            <div class="rivalry-cell">
+              <div class="rivalry-time-row">
+                <span class="rivalry-time-fixed jeremy-time">${formatTime(jTime)}</span>
+                ${jCrown}
+              </div>
+              <div class="rivalry-icon-row">${jPlayBtn}</div>
             </div>
-            <div class="rivalry-icon-row">${jPlayBtn}</div>
-          </div>
-        </td>
-        <td style="text-align:center">
-          <div class="rivalry-gap-cell">
-            <div class="rivalry-gap-time-row">
-              <span class="rivalry-gap-time-fixed">${formatTime(gap)}</span>
+          </td>
+          <td style="text-align:center">
+            <div class="rivalry-gap-cell">
+              <div class="rivalry-gap-time-row">
+                <span class="rivalry-gap-time-fixed">${formatTime(gap)}</span>
+              </div>
+              <div class="rivalry-gap-icon-row">
+                ${isClose ? `<span style="font-size:0.85rem">🔥</span><span class="rivalry-close-text">CLOSE</span>` : `<span style="height:16px;display:inline-block"></span>`}
+              </div>
             </div>
-            <div class="rivalry-gap-icon-row">
-              ${isClose ? `<span style="font-size:0.85rem">🔥</span><span class="rivalry-close-text">CLOSE</span>` : `<span style="height:16px;display:inline-block"></span>`}
+          </td>
+          <td style="text-align:center">
+            <div class="rivalry-cell">
+              <div class="rivalry-time-row">
+                <span class="rivalry-time-fixed matt-time">${formatTime(mTime)}</span>
+                ${mCrown}
+              </div>
+              <div class="rivalry-icon-row">${mPlayBtn}</div>
             </div>
-          </div>
-        </td>
-        <td style="text-align:center">
-          <div class="rivalry-cell">
-            <div class="rivalry-time-row">
-              <span class="rivalry-time-fixed matt-time">${formatTime(mTime)}</span>
-              ${mCrown}
-            </div>
-            <div class="rivalry-icon-row">${mPlayBtn}</div>
-          </div>
-        </td>
-      </tr>`;
+          </td>
+        </tr>`;
+      });
     });
   });
+
+  document.getElementById('mainContent').innerHTML = html + '</tbody></table></div>';
+}
 
   document.getElementById('mainContent').innerHTML = html + '</tbody></table></div>';
 }
