@@ -724,6 +724,12 @@
       margin: 0 auto;
       width: 22px;
       height: 22px;
+      transition: transform 0.2s ease, filter 0.2s ease;
+    }
+
+    .weapon-header-cell.weapon-crown-hover img {
+      transform: scale(1.4);
+      filter: drop-shadow(0 0 6px rgba(255, 179, 71, 0.75));
     }
 
     .monster-cell {
@@ -910,6 +916,10 @@
 
     tr:hover .crown-icon {
       transform: scale(1.4) rotate(-5deg);
+    }
+
+    .weapon-grid .time-cell.weapon-crown-hover .crown-icon {
+      transform: scale(1.55) rotate(-5deg);
     }
 
     .player.jeremy {
@@ -1927,6 +1937,45 @@ document.addEventListener('mouseout', event => {
     .forEach(icon => icon.classList.remove('monster-group-hover'));
 });
 
+document.addEventListener('mouseover', event => {
+  const row = event.target.closest('.weapon-desktop-table tr[data-weapon-monster]');
+  if (!row) return;
+  setWeaponCrownHover(row.dataset.weaponMonster);
+});
+
+document.addEventListener('mouseout', event => {
+  const row = event.target.closest('.weapon-desktop-table tr[data-weapon-monster]');
+  if (!row || row.contains(event.relatedTarget)) return;
+  const table = row.closest('.weapon-desktop-table');
+  const nextRow = event.relatedTarget && event.relatedTarget.closest
+    ? event.relatedTarget.closest('.weapon-desktop-table tr[data-weapon-monster]')
+    : null;
+  if (nextRow && nextRow.dataset.weaponMonster === row.dataset.weaponMonster) return;
+  clearWeaponCrownHover(table);
+});
+
+function clearWeaponCrownHover(scope = document) {
+  scope.querySelectorAll('.weapon-crown-hover').forEach(el => el.classList.remove('weapon-crown-hover'));
+}
+
+function setWeaponCrownHover(monsterKey) {
+  const table = document.querySelector('.weapon-desktop-table');
+  if (!table || !monsterKey) return;
+  clearWeaponCrownHover(table);
+
+  const monsterRows = table.querySelectorAll(`tr[data-weapon-monster="${CSS.escape(monsterKey)}"]`);
+  monsterRows.forEach(row => {
+    row.querySelectorAll('.time-cell').forEach(cell => {
+      if (!cell.querySelector('.crown-icon')) return;
+      cell.classList.add('weapon-crown-hover');
+      const weaponKey = cell.dataset.weaponKey;
+      if (!weaponKey) return;
+      const header = table.querySelector(`.weapon-header-cell[data-weapon-key="${CSS.escape(weaponKey)}"]`);
+      if (header) header.classList.add('weapon-crown-hover');
+    });
+  });
+}
+
 function renderRecentRuns() {
   const menu = document.getElementById('recentRunsMenu');
   if (!menu) return;
@@ -2415,7 +2464,7 @@ function renderWeaponTimes(filtered, monsterStats) {
   let html = `<div class="weapon-grid"><table class="weapon-desktop-table"><thead><tr><th style="width:180px">Monster</th><th style="width:60px"></th>`;
   weaponOrder.forEach(w => {
     const icon = weaponIcons[w.toLowerCase()];
-    html += `<th class="weapon-header-cell">${icon ? `<img src="${icon}" title="${w}">` : w}</th>`;
+    html += `<th class="weapon-header-cell" data-weapon-key="${escapeHtml(w.toLowerCase())}">${icon ? `<img src="${icon}" title="${w}">` : w}</th>`;
   });
   html += '</tr></thead><tbody>';
   let mobileHtml = '<div class="weapon-mobile-list">';
@@ -2493,12 +2542,12 @@ function renderWeaponTimes(filtered, monsterStats) {
       }
 
       ['jeremy', 'matt'].forEach(p => {
-        html += `<tr class="row-${p}">
+        html += `<tr class="row-${p}" data-weapon-monster="${escapeHtml(mKey)}">
           ${p === 'jeremy' ? `<td rowspan="2" class="monster-cell"><div class="cell-flex">${monsterIcons[mKey] ? `<img src="${monsterIcons[mKey]}" class="icon ${isTempered ? 'tempered-glow' : ''}">` : ''}${m}</div></td>` : ''}
           <td class="player ${p} sub-row-player">${p.charAt(0).toUpperCase() + p.slice(1)}</td>`;
         weaponOrder.forEach(w => {
           const cellData = lookup[`${p}|${mKey}|${w.toLowerCase()}`];
-          html += `<td class="time-cell">${cellData || '-'}</td>`;
+          html += `<td class="time-cell" data-weapon-key="${escapeHtml(w.toLowerCase())}">${cellData || '-'}</td>`;
         });
         html += '</tr>';
       });
