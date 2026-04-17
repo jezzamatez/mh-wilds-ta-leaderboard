@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
@@ -160,6 +160,14 @@
       box-sizing: border-box;
       position: relative;
       z-index: 100;
+    }
+
+    .mobile-filter-toggle {
+      display: none;
+    }
+
+    .mobile-filter-collapse {
+      display: none;
     }
 
     .filter-bar {
@@ -720,6 +728,12 @@
       margin: 0 auto;
       width: 22px;
       height: 22px;
+      transition: transform 0.2s ease, filter 0.2s ease;
+    }
+
+    .weapon-header-cell.weapon-crown-hover img {
+      transform: scale(1.4);
+      filter: drop-shadow(0 0 6px rgba(255, 179, 71, 0.75));
     }
 
     .monster-cell {
@@ -908,6 +922,10 @@
       transform: scale(1.4) rotate(-5deg);
     }
 
+    .weapon-grid .time-cell.weapon-crown-hover .crown-icon {
+      transform: scale(1.55) rotate(-5deg);
+    }
+
     .player.jeremy {
       color: #4ea1ff;
     }
@@ -1089,24 +1107,161 @@
       font-style: italic;
     }
 
+    .leaderboard-mobile-list {
+      display: none;
+    }
+
+    .weapon-mobile-list {
+      display: none;
+    }
+
+    .rivalry-mobile-list {
+      display: none;
+    }
+
     @media (max-width: 680px) {
+      body {
+        background-attachment: scroll;
+      }
+
+      .top-bar {
+        justify-content: flex-start;
+        padding: 10px 50px 0 12px;
+      }
+
+      h1 {
+        font-size: 1.34rem;
+        text-align: left;
+        line-height: 1.15;
+      }
+
+      .theme-toggle {
+        top: 8px;
+        right: 10px;
+        padding: 5px 9px;
+      }
+
+      #newRunBadge {
+        width: calc(100% - 40px);
+        box-sizing: border-box;
+      }
+
       .filter-shell,
       .scoreboard,
       .tabs,
       .table-container,
+      .weapon-grid,
       .rivalry-grid {
         width: calc(100% - 24px);
       }
 
+      .filter-shell {
+        margin-top: 8px;
+        padding: 7px;
+        flex-direction: column;
+      }
+
+      .mobile-filter-toggle {
+        display: grid;
+        grid-template-columns: 0.8fr 1fr 0.8fr;
+        gap: 4px;
+        width: 100%;
+        min-height: 36px;
+        padding: 4px;
+        background: rgba(8, 13, 23, 0.55);
+        border: 1px solid var(--border-subtle);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-family: var(--page-font);
+        cursor: pointer;
+      }
+
+      .mobile-filter-segment {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 0;
+        padding: 7px 6px;
+        background: var(--overlay-bg-light);
+        border-radius: 6px;
+        color: var(--text-secondary);
+        font-size: 0.74rem;
+        font-weight: 600;
+        line-height: 1;
+      }
+
+      .mobile-filter-segment strong {
+        color: var(--text-primary);
+        font-size: 0.78rem;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .filter-shell.filters-open .mobile-filter-toggle {
+        display: none;
+      }
+
+      .filter-shell.filters-open .mobile-filter-collapse {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        min-height: 28px;
+        background: var(--overlay-bg-light);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-secondary);
+        cursor: pointer;
+      }
+
+      .mobile-filter-collapse::before {
+        content: "";
+        width: 10px;
+        height: 6px;
+        background: #7f8ca3;
+        clip-path: polygon(50% 0, 100% 100%, 0 100%);
+      }
+
       .filter-bar {
+        display: none;
         justify-content: flex-start;
+        gap: 6px;
+        margin-top: 7px;
+      }
+
+      .filter-shell.filters-open .filter-bar {
+        display: flex;
       }
 
       .filter-select,
       #monsterSearch,
+      .recent-runs-toggle,
+      .submit-run-btn {
+        min-height: 38px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 0.84rem;
+      }
+
+      .filter-select {
+        flex: 1 1 calc(50% - 4px);
+        min-width: 0;
+        width: calc(50% - 4px);
+      }
+
+      #monsterSearch {
+        flex: 1 1 100%;
+        min-width: 0;
+        width: 100%;
+      }
+
       .recent-runs-dropdown,
       .submit-run-btn {
-        width: 100%;
+        flex: 1 1 calc(50% - 4px);
+        min-width: 0;
+        width: calc(50% - 4px);
       }
 
       .recent-runs-menu {
@@ -1115,13 +1270,399 @@
         min-width: 100%;
       }
 
+      .tabs {
+        gap: 6px;
+        padding: 4px;
+      }
+
+      .tab {
+        min-height: 38px;
+        padding: 7px 5px;
+        gap: 4px;
+        font-size: 0.74rem;
+        line-height: 1.15;
+      }
+
+      .tab-icon-crown {
+        width: 16px;
+        height: 16px;
+      }
+
+      .tab-icon-stopwatch {
+        font-size: 0.95rem;
+      }
+
       .submit-run-form {
         grid-template-columns: 1fr;
       }
 
+      .submit-modal {
+        align-items: flex-start;
+        overflow-y: auto;
+        padding: 12px;
+      }
+
+      .submit-dialog {
+        margin-top: 8px;
+        padding: 14px;
+      }
+
+      .submit-combobox-menu {
+        max-height: 170px;
+      }
+
       .scoreboard {
-        flex-direction: column;
+        gap: 6px;
+        margin: 8px auto;
+        padding: 7px;
+      }
+
+      .score {
+        padding: 7px 9px;
+        font-size: 0.82rem;
+      }
+
+      .score span {
+        font-size: 1.18rem;
+        margin-top: 2px;
+      }
+
+      .tabs {
+        margin: 8px auto;
+      }
+
+      .leaderboard-table {
+        display: none;
+      }
+
+      .leaderboard-mobile-list {
+        display: block;
+      }
+
+      .leaderboard-mobile-tier {
+        margin: 12px 0 7px 0;
+        padding: 9px 10px;
+        color: #ffb347;
+        background: var(--tier-row-bg);
+        border-radius: 8px;
+        font-weight: 800;
+      }
+
+      .leaderboard-mobile-card {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
         gap: 10px;
+        margin: 8px 0;
+        padding: 10px;
+        border-radius: 8px;
+        background: var(--overlay-bg-light);
+        border-top: 1px solid var(--border-subtle);
+        box-sizing: border-box;
+      }
+
+      .leaderboard-mobile-card.row-jeremy {
+        border-left: 3px solid #4ea1ff;
+      }
+
+      .leaderboard-mobile-card.row-matt {
+        border-left: 3px solid #ffb347;
+      }
+
+      .leaderboard-mobile-monster {
+        display: flex;
+        align-items: center;
+        grid-column: 1 / -1;
+        gap: 8px;
+        font-weight: 700;
+        min-width: 0;
+      }
+
+      .leaderboard-mobile-monster span {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .leaderboard-mobile-run {
+        display: grid;
+        grid-template-columns: minmax(58px, 1fr) 34px auto;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .leaderboard-mobile-weapon {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        min-width: 34px;
+      }
+
+      .leaderboard-mobile-time {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        font-family: var(--number-font);
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .weapon-grid,
+      .rivalry-grid {
+        max-width: calc(100vw - 24px);
+        margin-left: auto;
+        margin-right: auto;
+        padding: 10px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        box-sizing: border-box;
+      }
+
+      .weapon-grid table {
+        width: max-content;
+        min-width: 980px;
+        table-layout: auto;
+      }
+
+      .rivalry-grid table {
+        width: max-content;
+        min-width: 620px;
+        table-layout: auto;
+      }
+
+      .weapon-grid th,
+      .weapon-grid td,
+      .rivalry-grid th,
+      .rivalry-grid td {
+        white-space: nowrap;
+      }
+
+      .weapon-grid .weapon-desktop-table {
+        display: none;
+      }
+
+      .weapon-mobile-list {
+        display: block;
+      }
+
+      .weapon-mobile-tier {
+        margin: 12px 0 7px 0;
+        padding: 9px 10px;
+        color: #ffb347;
+        background: var(--tier-row-bg);
+        border-radius: 8px;
+        font-weight: 800;
+      }
+
+      .weapon-mobile-card {
+        margin: 8px 0 14px 0;
+        padding: 11px;
+        border-radius: 8px;
+        background: var(--overlay-bg-light);
+        border-left: 3px solid #ffb347;
+      }
+
+      .weapon-mobile-monster {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 800;
+        margin-bottom: 10px;
+      }
+
+      .weapon-mobile-monster span {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .weapon-mobile-row {
+        display: grid;
+        grid-template-columns: 34px minmax(118px, 1fr) minmax(118px, 1fr);
+        align-items: center;
+        gap: 8px;
+        padding: 8px 0;
+        border-top: 1px solid var(--border-subtle);
+      }
+
+      .weapon-mobile-row:first-of-type {
+        border-top: 0;
+      }
+
+      .weapon-mobile-header {
+        display: grid;
+        grid-template-columns: 34px minmax(118px, 1fr) minmax(118px, 1fr);
+        gap: 8px;
+        padding: 0 0 5px 0;
+        color: var(--text-secondary);
+        font-size: 0.74rem;
+        font-weight: 800;
+      }
+
+      .weapon-mobile-header span:not(:first-child) {
+        text-align: right;
+        padding-right: 2px;
+      }
+
+      .weapon-mobile-name {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .weapon-mobile-name img {
+        width: 24px;
+        height: 24px;
+        object-fit: contain;
+        flex-shrink: 0;
+      }
+
+      .weapon-mobile-player {
+        display: grid;
+        grid-template-columns: minmax(56px, 1fr) 16px 14px;
+        align-items: center;
+        gap: 4px;
+        font-family: var(--number-font);
+        font-size: 0.78rem;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .weapon-mobile-time {
+        text-align: right;
+      }
+
+      .weapon-mobile-player .crown-icon {
+        width: 15px;
+        height: 15px;
+      }
+
+      .weapon-mobile-video-spacer {
+        width: 14px;
+        height: 10px;
+      }
+
+      .rivalry-grid .rivalry-desktop-table {
+        display: none;
+      }
+
+      .rivalry-mobile-list {
+        display: block;
+      }
+
+      .rivalry-mobile-tier {
+        margin: 12px 0 7px 0;
+        padding: 9px 10px;
+        color: #ffb347;
+        background: var(--tier-row-bg);
+        border-radius: 8px;
+        font-weight: 800;
+      }
+
+      .rivalry-mobile-card {
+        margin: 8px 0 14px 0;
+        padding: 11px;
+        border-radius: 8px;
+        background: var(--overlay-bg-light);
+        border-left: 3px solid #ffb347;
+      }
+
+      .rivalry-mobile-head {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 34px;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .rivalry-mobile-monster {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        font-weight: 800;
+      }
+
+      .rivalry-mobile-monster span {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .rivalry-mobile-weapon {
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .rivalry-mobile-weapon img {
+        width: 30px;
+        height: 30px;
+        object-fit: contain;
+      }
+
+      .rivalry-mobile-line {
+        display: grid;
+        grid-template-columns: 58px 1fr auto;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 0;
+        border-top: 1px solid var(--border-subtle);
+      }
+
+      .rivalry-mobile-label {
+        color: var(--text-secondary);
+        font-size: 0.78rem;
+        font-weight: 800;
+      }
+
+      .rivalry-mobile-value {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-family: var(--number-font);
+        font-weight: 800;
+      }
+
+      .rivalry-mobile-gap {
+        color: var(--text-muted);
+      }
+
+      .rivalry-mobile-matchups {
+        display: grid;
+        gap: 10px;
+      }
+
+      .rivalry-mobile-matchup {
+        display: grid;
+        grid-template-columns: 42px minmax(0, 1fr);
+        column-gap: 10px;
+        align-items: center;
+        padding-top: 9px;
+        border-top: 1px solid var(--border-subtle);
+      }
+
+      .rivalry-mobile-matchup:first-child {
+        padding-top: 0;
+        border-top: 0;
+      }
+
+      .rivalry-mobile-matchup-head {
+        grid-row: 1 / span 3;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 92px;
+      }
+
+      .monster-cell {
+        width: 150px;
+      }
+
+      #videoContainer {
+        width: 94%;
+      }
+
+      #closeVideo {
+        top: -34px;
+        font-size: 20px;
       }
     }
   </style>
@@ -1135,7 +1676,12 @@
 
 <div id="newRunBadge" onclick="dismissBadge()"></div>
 
-<div class="filter-shell">
+<div class="filter-shell" id="filterShell">
+  <button class="mobile-filter-toggle" type="button" onclick="toggleMobileFilters()" aria-label="Toggle filters">
+    <span class="mobile-filter-segment"><strong id="mobileRunSummary">TA</strong></span>
+    <span class="mobile-filter-segment"><strong id="mobileTypeSummary">All Types</strong></span>
+    <span class="mobile-filter-segment"><strong id="mobileSearchSummary">Search</strong></span>
+  </button>
   <div class="filter-bar">
     <select class="filter-select" id="runFilterSelect" onchange="setRunFilter(this.value)">
       <option value="TA">TA Rules</option>
@@ -1148,13 +1694,14 @@
       <option value="frenzied">Frenzied</option>
       <option value="arch-tempered">Arch-Tempered</option>
     </select>
-    <input id="monsterSearch" type="text" placeholder="Search monster..." oninput="render()">
+    <input id="monsterSearch" type="text" placeholder="Search monster..." oninput="updateMobileFilterSummary(); render()">
     <div class="recent-runs-dropdown" id="recentRunsDropdown">
       <button class="recent-runs-toggle" type="button" onclick="toggleRecentRuns(event)">Recent Runs</button>
       <div class="recent-runs-menu" id="recentRunsMenu"></div>
     </div>
     <button class="submit-run-btn" type="button" onclick="openSubmitRun()">Submit Run</button>
   </div>
+  <button class="mobile-filter-collapse" type="button" onclick="toggleMobileFilters()" aria-label="Collapse filters"></button>
 </div>
 
 <div class="scoreboard">
@@ -1291,12 +1838,33 @@ function dismissBadge() {
 
 function setRunFilter(type) {
   currentRunFilter = type;
+  updateMobileFilterSummary();
   render();
 }
 
 function setTypeFilter(type) {
   currentTypeFilter = type;
+  updateMobileFilterSummary();
   render();
+}
+
+function updateMobileFilterSummary() {
+  const runSummary = document.getElementById('mobileRunSummary');
+  const typeSummary = document.getElementById('mobileTypeSummary');
+  const searchSummary = document.getElementById('mobileSearchSummary');
+  if (!runSummary || !typeSummary || !searchSummary) return;
+
+  const typeLabels = {
+    all: 'All Types',
+    regular: 'Regular',
+    tempered: 'Tempered',
+    frenzied: 'Frenzied',
+    'arch-tempered': 'Arch'
+  };
+  const query = document.getElementById('monsterSearch')?.value.trim();
+  runSummary.textContent = currentRunFilter;
+  typeSummary.textContent = typeLabels[currentTypeFilter] || 'All Types';
+  searchSummary.textContent = query ? 'Filtered' : 'Search';
 }
 
 function monsterMatchesTypeFilter(monsterName) {
@@ -1339,10 +1907,18 @@ function toggleRecentRuns(event) {
   document.getElementById('recentRunsDropdown').classList.toggle('open');
 }
 
+function toggleMobileFilters() {
+  document.getElementById('filterShell').classList.toggle('filters-open');
+}
+
 document.addEventListener('click', event => {
   const dropdown = document.getElementById('recentRunsDropdown');
   if (dropdown && !dropdown.contains(event.target)) dropdown.classList.remove('open');
-  if (!event.target.closest('.submit-combobox')) closeSubmitPickers();
+  if (!event.target.closest || !event.target.closest('.submit-combobox')) closeSubmitPickers();
+});
+
+document.addEventListener('focusin', event => {
+  if (!event.target.closest || !event.target.closest('.submit-combobox')) closeSubmitPickers();
 });
 
 document.addEventListener('mouseover', event => {
@@ -1360,6 +1936,45 @@ document.addEventListener('mouseout', event => {
   document.querySelectorAll(`.rivalry-monster-icon[data-rivalry-monster="${CSS.escape(monsterKey)}"]`)
     .forEach(icon => icon.classList.remove('monster-group-hover'));
 });
+
+document.addEventListener('mouseover', event => {
+  const row = event.target.closest('.weapon-desktop-table tr[data-weapon-monster]');
+  if (!row) return;
+  setWeaponCrownHover(row.dataset.weaponMonster);
+});
+
+document.addEventListener('mouseout', event => {
+  const row = event.target.closest('.weapon-desktop-table tr[data-weapon-monster]');
+  if (!row || row.contains(event.relatedTarget)) return;
+  const table = row.closest('.weapon-desktop-table');
+  const nextRow = event.relatedTarget && event.relatedTarget.closest
+    ? event.relatedTarget.closest('.weapon-desktop-table tr[data-weapon-monster]')
+    : null;
+  if (nextRow && nextRow.dataset.weaponMonster === row.dataset.weaponMonster) return;
+  clearWeaponCrownHover(table);
+});
+
+function clearWeaponCrownHover(scope = document) {
+  scope.querySelectorAll('.weapon-crown-hover').forEach(el => el.classList.remove('weapon-crown-hover'));
+}
+
+function setWeaponCrownHover(monsterKey) {
+  const table = document.querySelector('.weapon-desktop-table');
+  if (!table || !monsterKey) return;
+  clearWeaponCrownHover(table);
+
+  const monsterRows = table.querySelectorAll(`tr[data-weapon-monster="${CSS.escape(monsterKey)}"]`);
+  monsterRows.forEach(row => {
+    row.querySelectorAll('.time-cell').forEach(cell => {
+      if (!cell.querySelector('.crown-icon')) return;
+      cell.classList.add('weapon-crown-hover');
+      const weaponKey = cell.dataset.weaponKey;
+      if (!weaponKey) return;
+      const header = table.querySelector(`.weapon-header-cell[data-weapon-key="${CSS.escape(weaponKey)}"]`);
+      if (header) header.classList.add('weapon-crown-hover');
+    });
+  });
+}
 
 function renderRecentRuns() {
   const menu = document.getElementById('recentRunsMenu');
@@ -1553,11 +2168,13 @@ function populateSubmitForm() {
 function openSubmitRun() {
   populateSubmitForm();
   setSubmitStatus('');
+  closeSubmitPickers();
   document.getElementById('submitRunModal').classList.add('open');
   document.getElementById('submitDuration').focus();
 }
 
 function closeSubmitRun() {
+  closeSubmitPickers();
   document.getElementById('submitRunModal').classList.remove('open');
 }
 
@@ -1768,25 +2385,33 @@ function renderLeaderboard(filtered, monsterStats) {
     return;
   }
 
-  let html = `<div class="table-container"><table><thead><tr>
+  let html = `<div class="table-container"><table class="leaderboard-table"><thead><tr>
     <th class="leaderboard-monster-col">Monster</th>
     <th class="leaderboard-player-col">Player</th>
     <th class="leaderboard-weapon-col">Weapon</th>
     <th class="leaderboard-time-col">Time</th>
   </tr></thead><tbody>`;
+  let mobileHtml = '<div class="leaderboard-mobile-list">';
 
   Object.keys(grouped).sort((a, b) => b.localeCompare(a)).forEach(tier => {
     html += `<tr class="tier-row"><td colspan="4">${tier}</td></tr>`;
+    mobileHtml += `<div class="leaderboard-mobile-tier">${escapeHtml(tier)}</div>`;
     grouped[tier].forEach(r => {
       const isJeremy = r.player.toLowerCase().includes('jeremy');
       const isTempered = r.monster.toLowerCase().includes('tempered');
+      const monsterIcon = monsterIcons[r.monster.toLowerCase()]
+        ? `<img src="${monsterIcons[r.monster.toLowerCase()]}" class="icon ${isTempered ? 'tempered-glow' : ''}">`
+        : '';
+      const weaponIcon = weaponIcons[r.weapon.toLowerCase()]
+        ? `<img src="${weaponIcons[r.weapon.toLowerCase()]}" class="icon" title="${escapeHtml(r.weapon)}">`
+        : '';
       const playBtn = r.link
         ? `<span onclick="openVideo('${r.link}')" class="time-link">${PLAY_BUTTON_HTML}</span>`
         : `<span class="play-button-spacer"></span>`;
       html += `<tr class="row-${isJeremy ? 'jeremy' : 'matt'}">
-        <td><div class="cell-flex">${monsterIcons[r.monster.toLowerCase()] ? `<img src="${monsterIcons[r.monster.toLowerCase()]}" class="icon ${isTempered ? 'tempered-glow' : ''}">` : ''}${r.monster}</div></td>
+        <td><div class="cell-flex">${monsterIcon}${r.monster}</div></td>
         <td class="player ${isJeremy ? 'jeremy' : 'matt'}">${r.player}</td>
-        <td class="leaderboard-weapon-cell"><div class="cell-flex">${weaponIcons[r.weapon.toLowerCase()] ? `<img src="${weaponIcons[r.weapon.toLowerCase()]}" class="icon" title="${r.weapon}">` : ''}</div></td>
+        <td class="leaderboard-weapon-cell"><div class="cell-flex">${weaponIcon}</div></td>
         <td class="leaderboard-time-col">
           <div class="leaderboard-time-wrapper">
             <span class="${isJeremy ? 'jeremy-time' : 'matt-time'} time-val">${formatTime(r.timeSecs)}</span>
@@ -1794,10 +2419,22 @@ function renderLeaderboard(filtered, monsterStats) {
           </div>
         </td>
       </tr>`;
+      mobileHtml += `<div class="leaderboard-mobile-card row-${isJeremy ? 'jeremy' : 'matt'}">
+        <div class="leaderboard-mobile-monster">${monsterIcon}<span>${escapeHtml(r.monster)}</span></div>
+        <div class="leaderboard-mobile-run">
+          <span class="player ${isJeremy ? 'jeremy' : 'matt'}">${escapeHtml(r.player)}</span>
+          <span class="leaderboard-mobile-weapon">${weaponIcon}</span>
+          <span class="leaderboard-mobile-time ${isJeremy ? 'jeremy-time' : 'matt-time'}">
+            <span>${formatTime(r.timeSecs)}</span>
+            ${playBtn}
+          </span>
+        </div>
+      </div>`;
     });
   });
 
-  document.getElementById('mainContent').innerHTML = html + '</tbody></table></div>';
+  mobileHtml += '</div>';
+  document.getElementById('mainContent').innerHTML = html + `</tbody></table>${mobileHtml}</div>`;
 }
 
 function renderWeaponTimes(filtered, monsterStats) {
@@ -1824,12 +2461,13 @@ function renderWeaponTimes(filtered, monsterStats) {
     return;
   }
 
-  let html = `<div class="weapon-grid"><table><thead><tr><th style="width:180px">Monster</th><th style="width:60px"></th>`;
+  let html = `<div class="weapon-grid"><table class="weapon-desktop-table"><thead><tr><th style="width:180px">Monster</th><th style="width:60px"></th>`;
   weaponOrder.forEach(w => {
     const icon = weaponIcons[w.toLowerCase()];
-    html += `<th class="weapon-header-cell">${icon ? `<img src="${icon}" title="${w}">` : w}</th>`;
+    html += `<th class="weapon-header-cell" data-weapon-key="${escapeHtml(w.toLowerCase())}">${icon ? `<img src="${icon}" title="${w}">` : w}</th>`;
   });
   html += '</tr></thead><tbody>';
+  let mobileHtml = '<div class="weapon-mobile-list">';
 
   const lookup = {};
   filtered.forEach(r => {
@@ -1854,23 +2492,70 @@ function renderWeaponTimes(filtered, monsterStats) {
 
   Object.keys(groupedByTier).sort((a, b) => b.localeCompare(a)).forEach(tier => {
     html += `<tr class="tier-row"><td colspan="${weaponOrder.length + 2}">${tier}</td></tr>`;
+    mobileHtml += `<div class="weapon-mobile-tier">${escapeHtml(tier)}</div>`;
     groupedByTier[tier].forEach(m => {
       const mKey = m.toLowerCase();
       const isTempered = mKey.includes('tempered');
+      const monsterIcon = monsterIcons[mKey]
+        ? `<img src="${monsterIcons[mKey]}" class="icon ${isTempered ? 'tempered-glow' : ''}">`
+        : '';
+
+      let mobileRows = '';
+      weaponOrder.forEach(w => {
+        const wKey = w.toLowerCase();
+        const jRun = filtered.find(r => r.player.toLowerCase().includes('jeremy') && r.monster.toLowerCase() === mKey && r.weapon.toLowerCase() === wKey);
+        const mRun = filtered.find(r => !r.player.toLowerCase().includes('jeremy') && r.monster.toLowerCase() === mKey && r.weapon.toLowerCase() === wKey);
+        if (!jRun && !mRun) return;
+
+        const jRank = jRun ? monsterStats[mKey].indexOf(jRun) : -1;
+        const mRank = mRun ? monsterStats[mKey].indexOf(mRun) : -1;
+        const weaponIcon = weaponIcons[wKey] ? `<img src="${weaponIcons[wKey]}" title="${escapeHtml(w)}">` : '';
+        const jCrown = jRank === 0
+          ? `<img src="${GOLD_CROWN}" class="crown-icon gold-crown">`
+          : jRank === 1
+            ? `<img src="${SILVER_CROWN}" class="crown-icon silver-crown">`
+            : '';
+        const mCrown = mRank === 0
+          ? `<img src="${GOLD_CROWN}" class="crown-icon gold-crown">`
+          : mRank === 1
+            ? `<img src="${SILVER_CROWN}" class="crown-icon silver-crown">`
+            : '';
+        const jVideo = jRun && jRun.link
+          ? `<span onclick="openVideo('${jRun.link}')" class="time-link">${PLAY_BUTTON_HTML}</span>`
+          : '<span class="weapon-mobile-video-spacer"></span>';
+        const mVideo = mRun && mRun.link
+          ? `<span onclick="openVideo('${mRun.link}')" class="time-link">${PLAY_BUTTON_HTML}</span>`
+          : '<span class="weapon-mobile-video-spacer"></span>';
+        mobileRows += `<div class="weapon-mobile-row">
+          <div class="weapon-mobile-name">${weaponIcon}</div>
+          <div class="weapon-mobile-player jeremy-time"><span class="weapon-mobile-time">${jRun ? formatTime(jRun.timeSecs) : '-'}</span><span>${jCrown}</span><span>${jVideo}</span></div>
+          <div class="weapon-mobile-player matt-time"><span class="weapon-mobile-time">${mRun ? formatTime(mRun.timeSecs) : '-'}</span><span>${mCrown}</span><span>${mVideo}</span></div>
+        </div>`;
+      });
+
+      if (mobileRows) {
+        mobileHtml += `<div class="weapon-mobile-card">
+          <div class="weapon-mobile-monster">${monsterIcon}<span>${escapeHtml(m)}</span></div>
+          <div class="weapon-mobile-header"><span></span><span>Jeremy</span><span>Matt</span></div>
+          ${mobileRows}
+        </div>`;
+      }
+
       ['jeremy', 'matt'].forEach(p => {
-        html += `<tr class="row-${p}">
+        html += `<tr class="row-${p}" data-weapon-monster="${escapeHtml(mKey)}">
           ${p === 'jeremy' ? `<td rowspan="2" class="monster-cell"><div class="cell-flex">${monsterIcons[mKey] ? `<img src="${monsterIcons[mKey]}" class="icon ${isTempered ? 'tempered-glow' : ''}">` : ''}${m}</div></td>` : ''}
           <td class="player ${p} sub-row-player">${p.charAt(0).toUpperCase() + p.slice(1)}</td>`;
         weaponOrder.forEach(w => {
           const cellData = lookup[`${p}|${mKey}|${w.toLowerCase()}`];
-          html += `<td class="time-cell">${cellData || '-'}</td>`;
+          html += `<td class="time-cell" data-weapon-key="${escapeHtml(w.toLowerCase())}">${cellData || '-'}</td>`;
         });
         html += '</tr>';
       });
     });
   });
 
-  document.getElementById('mainContent').innerHTML = html + '</tbody></table></div>';
+  mobileHtml += '</div>';
+  document.getElementById('mainContent').innerHTML = html + `</tbody></table>${mobileHtml}</div>`;
 }
 
 function renderRivalry(filtered) {
@@ -1909,16 +2594,18 @@ function renderRivalry(filtered) {
     return;
   }
 
-  let html = `<div class="rivalry-grid"><table><thead><tr>
+  let html = `<div class="rivalry-grid"><table class="rivalry-desktop-table"><thead><tr>
     <th style="min-width:160px">Monster</th>
     <th>Weapon</th>
     <th style="text-align:center">Jeremy</th>
     <th style="text-align:center;width:100px">Gap</th>
     <th style="text-align:center">Matt</th>
   </tr></thead><tbody>`;
+  let mobileHtml = '<div class="rivalry-mobile-list">';
 
   Object.keys(groupedByTier).sort((a, b) => b.localeCompare(a)).forEach(tier => {
     html += `<tr class="tier-row"><td colspan="5">${tier}</td></tr>`;
+    mobileHtml += `<div class="rivalry-mobile-tier">${escapeHtml(tier)}</div>`;
 
     const monsterGroups = {};
     groupedByTier[tier].forEach(c => {
@@ -1929,6 +2616,7 @@ function renderRivalry(filtered) {
 
     Object.values(monsterGroups).forEach(monsterMatchups => {
       monsterMatchups.sort((a, b) => a.jeremy.weapon.localeCompare(b.jeremy.weapon));
+      let mobileMonsterCard = '';
 
       monsterMatchups.forEach((c, index) => {
         const jTime = c.jeremy.timeSecs;
@@ -1960,6 +2648,42 @@ function renderRivalry(filtered) {
         const mPlayBtn = c.matt.link
           ? `<span onclick="openVideo('${c.matt.link}')" class="time-link">${PLAY_BUTTON_HTML}</span>`
           : `<span class="play-button-spacer"></span>`;
+
+        const jMobileCrown = jWins
+          ? `<img src="${GOLD_CROWN}" class="crown-icon gold-crown">`
+          : '';
+        const mMobileCrown = !jWins
+          ? `<img src="${GOLD_CROWN}" class="crown-icon gold-crown">`
+          : '';
+
+        if (!mobileMonsterCard) {
+          mobileMonsterCard = `<div class="rivalry-mobile-card">
+            <div class="rivalry-mobile-head">
+              <div class="rivalry-mobile-monster">${monsterImg}<span>${escapeHtml(c.jeremy.monster)}</span></div>
+            </div>
+            <div class="rivalry-mobile-matchups">`;
+        }
+
+        mobileMonsterCard += `<div class="rivalry-mobile-matchup">
+          <div class="rivalry-mobile-matchup-head">
+            <div class="rivalry-mobile-weapon">${weaponImg}</div>
+          </div>
+          <div class="rivalry-mobile-line">
+            <span class="rivalry-mobile-label">Jeremy</span>
+            <span class="rivalry-mobile-value jeremy-time">${formatTime(jTime)}${jMobileCrown}</span>
+            ${jPlayBtn}
+          </div>
+          <div class="rivalry-mobile-line">
+            <span class="rivalry-mobile-label">Matt</span>
+            <span class="rivalry-mobile-value matt-time">${formatTime(mTime)}${mMobileCrown}</span>
+            ${mPlayBtn}
+          </div>
+          <div class="rivalry-mobile-line">
+            <span class="rivalry-mobile-label">Gap</span>
+            <span class="rivalry-mobile-value rivalry-mobile-gap">${formatTime(gap)}</span>
+            ${isClose ? '<span class="rivalry-close-text">CLOSE</span>' : '<span></span>'}
+          </div>
+        </div>`;
 
         html += `<tr class="row-${jWins ? 'jeremy' : 'matt'}" data-rivalry-monster="${escapeHtml(mKey)}">`;
 
@@ -1999,13 +2723,19 @@ function renderRivalry(filtered) {
           </td>
         </tr>`;
       });
+
+      if (mobileMonsterCard) {
+        mobileHtml += `${mobileMonsterCard}</div></div>`;
+      }
     });
   });
 
-  document.getElementById('mainContent').innerHTML = html + '</tbody></table></div>';
+  mobileHtml += '</div>';
+  document.getElementById('mainContent').innerHTML = html + `</tbody></table>${mobileHtml}</div>`;
 }
 
 initTheme();
+updateMobileFilterSummary();
 loadData();
 setInterval(loadData, 120000);
 </script>
