@@ -973,6 +973,7 @@ const SHEET_BASE = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?fo
 const GID_RUNS = '0';
 const GID_MONSTERS = '73280311';
 const GID_WEAPONS = '2020437619';
+const ICON_MAP_URL = 'assets/cache/icon-map.json';
 
 const GOLD_CROWN = 'https://www.phantombrawlers.com/static/mhwilds/Icons/King%20Crown.png';
 const SILVER_CROWN = 'https://www.phantombrawlers.com/static/mhwilds/Icons/Big%20Crown.png';
@@ -987,6 +988,7 @@ let currentView = 'leaderboard';
 let currentRunFilter = 'TA';
 let currentTypeFilter = 'all';
 let previousRunIds = null;
+let iconMap = {};
 
 function initTheme() {
   const saved = localStorage.getItem('hb-theme') || 'dark';
@@ -1185,10 +1187,25 @@ function closeVideo() {
   document.getElementById('videoFrame').src = '';
 }
 
+async function loadIconMap() {
+  try {
+    const res = await fetch(`${ICON_MAP_URL}?t=${Date.now()}`);
+    if (!res.ok) throw new Error('Icon map not found');
+    iconMap = await res.json();
+  } catch {
+    iconMap = {};
+  }
+}
+
+function resolveIconUrl(url) {
+  return iconMap[url] || url;
+}
+
 async function loadData() {
   document.getElementById('lastUpdated').textContent = 'Syncing...';
   try {
     const ts = Date.now();
+    await loadIconMap();
     const [runsRes, mRes, wRes] = await Promise.all([
       fetch(`${SHEET_BASE}&gid=${GID_RUNS}&t=${ts}`).then(r => r.text()),
       fetch(`${SHEET_BASE}&gid=${GID_MONSTERS}&t=${ts}`).then(r => r.text()),
@@ -1204,7 +1221,7 @@ async function loadData() {
     mRows.slice(1).forEach(r => {
       const name = clean(r[1]).toLowerCase();
       monsterTiers[name] = clean(r[0]);
-      monsterIcons[name] = clean(r[3]);
+      monsterIcons[name] = resolveIconUrl(clean(r[3]));
     });
 
     weaponIcons = {};
@@ -1212,7 +1229,7 @@ async function loadData() {
     wRows.slice(1).forEach(r => {
       const wName = clean(r[0]);
       weaponOrder.push(wName);
-      weaponIcons[wName.toLowerCase()] = clean(r[2]);
+      weaponIcons[wName.toLowerCase()] = resolveIconUrl(clean(r[2]));
     });
 
     const headers = runRows[0].map(h => h.toLowerCase().trim());
