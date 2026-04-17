@@ -1153,7 +1153,8 @@
       </div>
       <div class="submit-field full">
         <label for="submitMonster">Monster</label>
-        <select id="submitMonster" class="submit-input" required></select>
+        <input id="submitMonster" class="submit-input" type="text" list="submitMonsterOptions" autocomplete="off" required>
+        <datalist id="submitMonsterOptions"></datalist>
       </div>
       <div class="submit-field">
         <label for="submitWeapon">Weapon</label>
@@ -1467,10 +1468,16 @@ async function submitRun(event) {
     return;
   }
 
+  const monster = clean(document.getElementById('submitMonster').value);
+  if (!monsterNames.some(name => name.toLowerCase() === monster.toLowerCase())) {
+    setSubmitStatus('Choose a monster from the list.', 'error');
+    return;
+  }
+
   const payload = {
     Player: clean(document.getElementById('submitPlayer').value),
     RunType: clean(document.getElementById('submitRunType').value),
-    Monster: clean(document.getElementById('submitMonster').value),
+    Monster: monster,
     Weapon: clean(document.getElementById('submitWeapon').value),
     Difficulty: '★★★★★',
     Duration: duration,
