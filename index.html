@@ -120,6 +120,7 @@
       -webkit-backdrop-filter: blur(8px);
       border-radius: 12px;
       border: 1px solid var(--border-subtle);
+      box-sizing: border-box;
     }
 
     .filter-shell {
@@ -211,7 +212,7 @@
     .tab.active { color: #ffb347; font-weight: bold; background: var(--overlay-bg-mid); }
 
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    .table-container { max-width: 1100px; margin: auto; padding: 15px; width: 95%; overflow-x: auto; }
+    .table-container { max-width: var(--panel-width); margin: auto; padding: 15px; width: 95%; overflow-x: auto; }
     th { background: var(--table-header-bg); color: var(--text-secondary); font-size: 0.85rem; }
     th, td { padding: 8px 4px; text-align: left; white-space: nowrap; }
 
@@ -268,7 +269,7 @@
     tr.row-jeremy { border-left: 3px solid #4ea1ff; }
     tr.row-matt { border-left: 3px solid #ffb347; }
 
-    .rivalry-grid { max-width: 1100px; margin: 0 auto 50px auto; padding: 15px; width: 95%; }
+    .rivalry-grid { max-width: var(--panel-width); margin: 0 auto 50px auto; padding: 15px; width: 95%; }
     .rivalry-grid table { table-layout: auto; }
     .rivalry-weapon-col { font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 5px; }
     .rivalry-weapon-col img { width: 18px; height: 18px; }
