@@ -1146,13 +1146,23 @@
         gap: 8px;
       }
 
-      .filter-select,
-      #monsterSearch,
-      .recent-runs-dropdown,
-      .submit-run-btn {
+      .filter-select {
+        flex: 1 1 calc(50% - 4px);
+        min-width: 0;
+        width: calc(50% - 4px);
+      }
+
+      #monsterSearch {
         flex: 1 1 100%;
         min-width: 0;
         width: 100%;
+      }
+
+      .recent-runs-dropdown,
+      .submit-run-btn {
+        flex: 1 1 calc(50% - 4px);
+        min-width: 0;
+        width: calc(50% - 4px);
       }
 
       .recent-runs-menu {
@@ -1513,6 +1523,10 @@
       }
 
       .rivalry-mobile-matchup {
+        display: grid;
+        grid-template-columns: 42px minmax(0, 1fr);
+        column-gap: 10px;
+        align-items: center;
         padding-top: 9px;
         border-top: 1px solid var(--border-subtle);
       }
@@ -1523,9 +1537,11 @@
       }
 
       .rivalry-mobile-matchup-head {
+        grid-row: 1 / span 3;
         display: flex;
-        justify-content: flex-end;
-        margin-bottom: 3px;
+        align-items: center;
+        justify-content: center;
+        min-height: 92px;
       }
 
       .monster-cell {
