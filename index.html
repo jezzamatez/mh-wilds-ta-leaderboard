@@ -669,6 +669,19 @@
       transform: scale(1.25);
     }
 
+    .table-container tr.row-jeremy:hover .icon,
+    .table-container tr.row-matt:hover .icon,
+    .rivalry-grid tr.row-jeremy:hover .icon,
+    .rivalry-grid tr.row-matt:hover .icon,
+    .rivalry-grid tr.row-jeremy:hover .rivalry-weapon-col img,
+    .rivalry-grid tr.row-matt:hover .rivalry-weapon-col img {
+      transform: scale(1.25);
+    }
+
+    .rivalry-monster-icon.monster-group-hover {
+      transform: scale(1.25);
+    }
+
     .tempered-glow {
       filter: drop-shadow(0 0 5px rgba(163, 73, 255, 0.6));
     }
@@ -739,8 +752,9 @@
     }
 
     .rivalry-weapon-col img {
-      width: 28px;
-      height: 28px;
+      width: 34px;
+      height: 34px;
+      transition: transform 0.2s ease;
     }
 
     .rivalry-grid th:nth-child(2),
@@ -1078,6 +1092,22 @@ function toggleRecentRuns(event) {
 document.addEventListener('click', event => {
   const dropdown = document.getElementById('recentRunsDropdown');
   if (dropdown && !dropdown.contains(event.target)) dropdown.classList.remove('open');
+});
+
+document.addEventListener('mouseover', event => {
+  const row = event.target.closest('.rivalry-grid tr[data-rivalry-monster]');
+  if (!row) return;
+  const monsterKey = row.dataset.rivalryMonster;
+  document.querySelectorAll(`.rivalry-monster-icon[data-rivalry-monster="${CSS.escape(monsterKey)}"]`)
+    .forEach(icon => icon.classList.add('monster-group-hover'));
+});
+
+document.addEventListener('mouseout', event => {
+  const row = event.target.closest('.rivalry-grid tr[data-rivalry-monster]');
+  if (!row || row.contains(event.relatedTarget)) return;
+  const monsterKey = row.dataset.rivalryMonster;
+  document.querySelectorAll(`.rivalry-monster-icon[data-rivalry-monster="${CSS.escape(monsterKey)}"]`)
+    .forEach(icon => icon.classList.remove('monster-group-hover'));
 });
 
 function renderRecentRuns() {
@@ -1488,7 +1518,7 @@ function renderRivalry(filtered) {
         const isTempered = mKey.includes('tempered');
 
         const monsterImg = monsterIcons[mKey]
-          ? `<img src="${monsterIcons[mKey]}" class="icon ${isTempered ? 'tempered-glow' : ''}" style="width:28px;height:28px">`
+          ? `<img src="${monsterIcons[mKey]}" class="icon rivalry-monster-icon ${isTempered ? 'tempered-glow' : ''}" data-rivalry-monster="${escapeHtml(mKey)}">`
           : '';
         const weaponImg = weaponIcons[wKey]
           ? `<img src="${weaponIcons[wKey]}" title="${c.jeremy.weapon}">`
@@ -1508,7 +1538,7 @@ function renderRivalry(filtered) {
           ? `<span onclick="openVideo('${c.matt.link}')" class="time-link">${PLAY_BUTTON_HTML}</span>`
           : `<span class="play-button-spacer"></span>`;
 
-        html += `<tr class="row-${jWins ? 'jeremy' : 'matt'}">`;
+        html += `<tr class="row-${jWins ? 'jeremy' : 'matt'}" data-rivalry-monster="${escapeHtml(mKey)}">`;
 
         if (index === 0) {
           html += `<td rowspan="${monsterMatchups.length}" style="vertical-align: middle;"><div class="cell-flex">${monsterImg}${c.jeremy.monster}</div></td>`;
