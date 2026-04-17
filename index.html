@@ -2395,11 +2395,19 @@ function renderWeaponTimes(filtered, monsterStats) {
         const mRun = filtered.find(r => !r.player.toLowerCase().includes('jeremy') && r.monster.toLowerCase() === mKey && r.weapon.toLowerCase() === wKey);
         if (!jRun && !mRun) return;
 
-        const jWins = jRun && (!mRun || jRun.timeSecs < mRun.timeSecs);
-        const mWins = mRun && (!jRun || mRun.timeSecs < jRun.timeSecs);
+        const jRank = jRun ? monsterStats[mKey].indexOf(jRun) : -1;
+        const mRank = mRun ? monsterStats[mKey].indexOf(mRun) : -1;
         const weaponIcon = weaponIcons[wKey] ? `<img src="${weaponIcons[wKey]}" title="${escapeHtml(w)}">` : '';
-        const jCrown = jWins ? `<img src="${GOLD_CROWN}" class="crown-icon gold-crown">` : '';
-        const mCrown = mWins ? `<img src="${GOLD_CROWN}" class="crown-icon gold-crown">` : '';
+        const jCrown = jRank === 0
+          ? `<img src="${GOLD_CROWN}" class="crown-icon gold-crown">`
+          : jRank === 1
+            ? `<img src="${SILVER_CROWN}" class="crown-icon silver-crown">`
+            : '';
+        const mCrown = mRank === 0
+          ? `<img src="${GOLD_CROWN}" class="crown-icon gold-crown">`
+          : mRank === 1
+            ? `<img src="${SILVER_CROWN}" class="crown-icon silver-crown">`
+            : '';
         const jVideo = jRun && jRun.link
           ? `<span onclick="openVideo('${jRun.link}')" class="time-link">${PLAY_BUTTON_HTML}</span>`
           : '<span class="weapon-mobile-video-spacer"></span>';
