@@ -1359,7 +1359,7 @@
 
       .weapon-mobile-row {
         display: grid;
-        grid-template-columns: 34px minmax(90px, 1fr) minmax(90px, 1fr);
+        grid-template-columns: 34px minmax(118px, 1fr) minmax(118px, 1fr);
         align-items: center;
         gap: 8px;
         padding: 8px 0;
@@ -1368,6 +1368,21 @@
 
       .weapon-mobile-row:first-of-type {
         border-top: 0;
+      }
+
+      .weapon-mobile-header {
+        display: grid;
+        grid-template-columns: 34px minmax(118px, 1fr) minmax(118px, 1fr);
+        gap: 8px;
+        padding: 0 0 5px 0;
+        color: var(--text-secondary);
+        font-size: 0.74rem;
+        font-weight: 800;
+      }
+
+      .weapon-mobile-header span:not(:first-child) {
+        text-align: right;
+        padding-right: 2px;
       }
 
       .weapon-mobile-name {
@@ -1384,14 +1399,18 @@
       }
 
       .weapon-mobile-player {
-        display: flex;
+        display: grid;
+        grid-template-columns: minmax(56px, 1fr) 16px 14px;
         align-items: center;
-        justify-content: flex-end;
         gap: 4px;
         font-family: var(--number-font);
         font-size: 0.78rem;
         font-weight: 800;
         white-space: nowrap;
+      }
+
+      .weapon-mobile-time {
+        text-align: right;
       }
 
       .weapon-mobile-player .crown-icon {
@@ -1486,6 +1505,27 @@
 
       .rivalry-mobile-gap {
         color: var(--text-muted);
+      }
+
+      .rivalry-mobile-matchups {
+        display: grid;
+        gap: 10px;
+      }
+
+      .rivalry-mobile-matchup {
+        padding-top: 9px;
+        border-top: 1px solid var(--border-subtle);
+      }
+
+      .rivalry-mobile-matchup:first-child {
+        padding-top: 0;
+        border-top: 0;
+      }
+
+      .rivalry-mobile-matchup-head {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 3px;
       }
 
       .monster-cell {
@@ -2280,14 +2320,15 @@ function renderWeaponTimes(filtered, monsterStats) {
           : '<span class="weapon-mobile-video-spacer"></span>';
         mobileRows += `<div class="weapon-mobile-row">
           <div class="weapon-mobile-name">${weaponIcon}</div>
-          <div class="weapon-mobile-player jeremy-time"><span>J ${jRun ? formatTime(jRun.timeSecs) : '-'}</span>${jCrown}${jVideo}</div>
-          <div class="weapon-mobile-player matt-time"><span>M ${mRun ? formatTime(mRun.timeSecs) : '-'}</span>${mCrown}${mVideo}</div>
+          <div class="weapon-mobile-player jeremy-time"><span class="weapon-mobile-time">${jRun ? formatTime(jRun.timeSecs) : '-'}</span><span>${jCrown}</span><span>${jVideo}</span></div>
+          <div class="weapon-mobile-player matt-time"><span class="weapon-mobile-time">${mRun ? formatTime(mRun.timeSecs) : '-'}</span><span>${mCrown}</span><span>${mVideo}</span></div>
         </div>`;
       });
 
       if (mobileRows) {
         mobileHtml += `<div class="weapon-mobile-card">
           <div class="weapon-mobile-monster">${monsterIcon}<span>${escapeHtml(m)}</span></div>
+          <div class="weapon-mobile-header"><span></span><span>Jeremy</span><span>Matt</span></div>
           ${mobileRows}
         </div>`;
       }
@@ -2367,6 +2408,7 @@ function renderRivalry(filtered) {
 
     Object.values(monsterGroups).forEach(monsterMatchups => {
       monsterMatchups.sort((a, b) => a.jeremy.weapon.localeCompare(b.jeremy.weapon));
+      let mobileMonsterCard = '';
 
       monsterMatchups.forEach((c, index) => {
         const jTime = c.jeremy.timeSecs;
@@ -2405,9 +2447,17 @@ function renderRivalry(filtered) {
         const mMobileCrown = !jWins
           ? `<img src="${GOLD_CROWN}" class="crown-icon gold-crown">`
           : '';
-        mobileHtml += `<div class="rivalry-mobile-card">
-          <div class="rivalry-mobile-head">
-            <div class="rivalry-mobile-monster">${monsterImg}<span>${escapeHtml(c.jeremy.monster)}</span></div>
+
+        if (!mobileMonsterCard) {
+          mobileMonsterCard = `<div class="rivalry-mobile-card">
+            <div class="rivalry-mobile-head">
+              <div class="rivalry-mobile-monster">${monsterImg}<span>${escapeHtml(c.jeremy.monster)}</span></div>
+            </div>
+            <div class="rivalry-mobile-matchups">`;
+        }
+
+        mobileMonsterCard += `<div class="rivalry-mobile-matchup">
+          <div class="rivalry-mobile-matchup-head">
             <div class="rivalry-mobile-weapon">${weaponImg}</div>
           </div>
           <div class="rivalry-mobile-line">
@@ -2465,6 +2515,10 @@ function renderRivalry(filtered) {
           </td>
         </tr>`;
       });
+
+      if (mobileMonsterCard) {
+        mobileHtml += `${mobileMonsterCard}</div></div>`;
+      }
     });
   });
 
