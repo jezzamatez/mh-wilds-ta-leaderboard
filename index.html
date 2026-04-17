@@ -441,6 +441,10 @@
       grid-column: 1 / -1;
     }
 
+    .submit-combobox {
+      position: relative;
+    }
+
     .submit-field label {
       color: var(--text-secondary);
       font-size: 0.76rem;
@@ -465,6 +469,50 @@
     .submit-input:focus,
     .submit-input:hover {
       border-color: #ffb347;
+    }
+
+    .submit-combobox-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      z-index: 1200;
+      max-height: 210px;
+      overflow-y: auto;
+      background: var(--overlay-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.36);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .submit-combobox.open .submit-combobox-menu {
+      display: block;
+    }
+
+    .submit-combobox-option {
+      padding: 10px 12px;
+      color: var(--text-primary);
+      cursor: pointer;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .submit-combobox-option:first-child {
+      border-top: 0;
+    }
+
+    .submit-combobox-option:hover,
+    .submit-combobox-option.active {
+      background: var(--overlay-bg-mid);
+      color: #ffb347;
+    }
+
+    .submit-combobox-empty {
+      padding: 10px 12px;
+      color: var(--text-secondary);
+      font-style: italic;
     }
 
     .submit-actions {
@@ -1153,12 +1201,17 @@
       </div>
       <div class="submit-field full">
         <label for="submitMonster">Monster</label>
-        <input id="submitMonster" class="submit-input" type="text" list="submitMonsterOptions" autocomplete="off" required>
-        <datalist id="submitMonsterOptions"></datalist>
+        <div class="submit-combobox" id="submitMonsterBox">
+          <input id="submitMonster" class="submit-input" type="text" autocomplete="off" required oninput="renderSubmitPicker('monster')" onfocus="openSubmitPicker('monster')">
+          <div class="submit-combobox-menu" id="submitMonsterMenu"></div>
+        </div>
       </div>
       <div class="submit-field">
         <label for="submitWeapon">Weapon</label>
-        <select id="submitWeapon" class="submit-input" required></select>
+        <div class="submit-combobox" id="submitWeaponBox">
+          <input id="submitWeapon" class="submit-input" type="text" autocomplete="off" required oninput="renderSubmitPicker('weapon')" onfocus="openSubmitPicker('weapon')">
+          <div class="submit-combobox-menu" id="submitWeaponMenu"></div>
+        </div>
       </div>
       <div class="submit-field">
         <label for="submitDuration">Duration</label>
@@ -1289,6 +1342,7 @@ function toggleRecentRuns(event) {
 document.addEventListener('click', event => {
   const dropdown = document.getElementById('recentRunsDropdown');
   if (dropdown && !dropdown.contains(event.target)) dropdown.classList.remove('open');
+  if (!event.target.closest('.submit-combobox')) closeSubmitPickers();
 });
 
 document.addEventListener('mouseover', event => {
@@ -1421,18 +1475,78 @@ function setSubmitStatus(message, type = '') {
   status.className = `submit-status ${type}`.trim();
 }
 
-function buildSubmitOptions(selectId, values) {
-  const select = document.getElementById(selectId);
-  if (!select) return;
-  select.innerHTML = values
+function submitPickerConfig(type) {
+  return type === 'weapon'
+    ? {
+        inputId: 'submitWeapon',
+        boxId: 'submitWeaponBox',
+        menuId: 'submitWeaponMenu',
+        values: weaponOrder
+      }
+    : {
+        inputId: 'submitMonster',
+        boxId: 'submitMonsterBox',
+        menuId: 'submitMonsterMenu',
+        values: monsterNames
+      };
+}
+
+function renderSubmitPicker(type) {
+  const config = submitPickerConfig(type);
+  const input = document.getElementById(config.inputId);
+  const menu = document.getElementById(config.menuId);
+  if (!input || !menu) return;
+
+  const query = clean(input.value).toLowerCase();
+  const matches = config.values
     .filter(Boolean)
-    .map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
+    .filter(value => value.toLowerCase().includes(query))
+    .slice(0, 12);
+
+  if (matches.length === 0) {
+    menu.innerHTML = '<div class="submit-combobox-empty">No matches</div>';
+    return;
+  }
+
+  menu.innerHTML = matches
+    .map(value => `<div class="submit-combobox-option" data-picker-value="${escapeHtml(value)}" onclick="chooseSubmitPickerFromOption('${type}', this)">${escapeHtml(value)}</div>`)
     .join('');
 }
 
+function openSubmitPicker(type) {
+  const config = submitPickerConfig(type);
+  const box = document.getElementById(config.boxId);
+  if (!box) return;
+  closeSubmitPickers(type);
+  renderSubmitPicker(type);
+  box.classList.add('open');
+}
+
+function closeSubmitPickers(exceptType = '') {
+  ['monster', 'weapon'].forEach(type => {
+    if (type === exceptType) return;
+    const box = document.getElementById(submitPickerConfig(type).boxId);
+    if (box) box.classList.remove('open');
+  });
+}
+
+function chooseSubmitPicker(type, value) {
+  const config = submitPickerConfig(type);
+  const input = document.getElementById(config.inputId);
+  const box = document.getElementById(config.boxId);
+  if (input) input.value = value;
+  if (box) box.classList.remove('open');
+}
+
+function chooseSubmitPickerFromOption(type, option) {
+  chooseSubmitPicker(type, option.dataset.pickerValue || '');
+}
+
 function populateSubmitForm() {
-  buildSubmitOptions('submitMonster', monsterNames);
-  buildSubmitOptions('submitWeapon', weaponOrder);
+  document.getElementById('submitMonster').value = '';
+  document.getElementById('submitWeapon').value = '';
+  renderSubmitPicker('monster');
+  renderSubmitPicker('weapon');
   document.getElementById('submitRunType').value = currentRunFilter;
 }
 
@@ -1474,11 +1588,17 @@ async function submitRun(event) {
     return;
   }
 
+  const weapon = clean(document.getElementById('submitWeapon').value);
+  if (!weaponOrder.some(name => name.toLowerCase() === weapon.toLowerCase())) {
+    setSubmitStatus('Choose a weapon from the list.', 'error');
+    return;
+  }
+
   const payload = {
     Player: clean(document.getElementById('submitPlayer').value),
     RunType: clean(document.getElementById('submitRunType').value),
     Monster: monster,
-    Weapon: clean(document.getElementById('submitWeapon').value),
+    Weapon: weapon,
     Difficulty: '★★★★★',
     Duration: duration,
     Link: clean(document.getElementById('submitLink').value)
