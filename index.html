@@ -1175,6 +1175,7 @@
     </form>
   </div>
 </div>
+<iframe id="submitRunFrame" name="submitRunFrame" style="display:none"></iframe>
 
 <script>
 const SHEET_ID = '1H6wf4FxwHntdQvsy5DSMXxaEpgLPeX7NQ7SQ51KaU04';
@@ -1182,7 +1183,7 @@ const SHEET_BASE = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?fo
 const GID_RUNS = '0';
 const GID_MONSTERS = '73280311';
 const GID_WEAPONS = '2020437619';
-const SUBMIT_RUN_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxL48LxYcWmmYis99Cq1xfNo1Q8uOk8h9VQwDwvQ15-7BVl3TN2vKSUaq9fY3HKpuRTdA/exec';
+const SUBMIT_RUN_ENDPOINT = 'https://script.google.com/macros/s/AKfycbws8Ia_eSpxe7KsAhGF6wmRSkkM6vqy2oy8JYiyfAOx-MMqLgZ6miybhILnXmUiHlrDVQ/exec';
 const ICON_MAP_URL = 'assets/cache/icon-map.json';
 
 const GOLD_CROWN = 'https://www.phantombrawlers.com/static/mhwilds/Icons/King%20Crown.png';
@@ -1454,7 +1455,7 @@ function normalizeDuration(value) {
   return `${parseInt(match[1], 10)}:${match[2]}.${match[3]}`;
 }
 
-async function submitRun(event) {
+function submitRun(event) {
   event.preventDefault();
 
   if (!SUBMIT_RUN_ENDPOINT) {
@@ -1478,37 +1479,41 @@ async function submitRun(event) {
     Link: clean(document.getElementById('submitLink').value)
   };
 
-  const formData = new URLSearchParams();
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = SUBMIT_RUN_ENDPOINT;
+  form.target = 'submitRunFrame';
+  form.style.display = 'none';
+
   Object.entries(payload).forEach(([key, value]) => {
-    formData.set(key, value);
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = key;
+    input.value = value;
+    form.appendChild(input);
   });
 
   const button = document.getElementById('submitRunButton');
   button.disabled = true;
-  setSubmitStatus('Submitting...');
+  setSubmitStatus('Submitting to Google Sheets...');
 
-  try {
-    await fetch(SUBMIT_RUN_ENDPOINT, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-      },
-      body: formData
-    });
-
-    setSubmitStatus('Submitted. Refreshing sheet data...', 'success');
+  const frame = document.getElementById('submitRunFrame');
+  const cleanup = () => {
+    frame.removeEventListener('load', cleanup);
+    form.remove();
+    button.disabled = false;
+    setSubmitStatus('Sent. Refreshing sheet data...', 'success');
     document.getElementById('submitRunForm').reset();
     document.getElementById('submitRunType').value = currentRunFilter;
     setTimeout(() => {
       closeSubmitRun();
       loadData();
     }, 1200);
-  } catch (error) {
-    setSubmitStatus('Submit failed. Check the web app URL and permissions.', 'error');
-  } finally {
-    button.disabled = false;
-  }
+  };
+
+  frame.addEventListener('load', cleanup);
+  document.body.appendChild(form);
+  form.submit();
 }
 
 async function loadIconMap() {
