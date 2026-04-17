@@ -1151,16 +1151,6 @@
           <option value="Freestyle">Freestyle</option>
         </select>
       </div>
-      <div class="submit-field">
-        <label for="submitDifficulty">Difficulty</label>
-        <select id="submitDifficulty" class="submit-input" required>
-          <option value="★">★</option>
-          <option value="★★">★★</option>
-          <option value="★★★">★★★</option>
-          <option value="★★★★">★★★★</option>
-          <option value="★★★★★">★★★★★</option>
-        </select>
-      </div>
       <div class="submit-field full">
         <label for="submitMonster">Monster</label>
         <select id="submitMonster" class="submit-input" required></select>
@@ -1192,7 +1182,7 @@ const SHEET_BASE = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?fo
 const GID_RUNS = '0';
 const GID_MONSTERS = '73280311';
 const GID_WEAPONS = '2020437619';
-const SUBMIT_RUN_ENDPOINT = '';
+const SUBMIT_RUN_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxL48LxYcWmmYis99Cq1xfNo1Q8uOk8h9VQwDwvQ15-7BVl3TN2vKSUaq9fY3HKpuRTdA/exec';
 const ICON_MAP_URL = 'assets/cache/icon-map.json';
 
 const GOLD_CROWN = 'https://www.phantombrawlers.com/static/mhwilds/Icons/King%20Crown.png';
@@ -1483,7 +1473,7 @@ async function submitRun(event) {
     RunType: clean(document.getElementById('submitRunType').value),
     Monster: clean(document.getElementById('submitMonster').value),
     Weapon: clean(document.getElementById('submitWeapon').value),
-    Difficulty: clean(document.getElementById('submitDifficulty').value),
+    Difficulty: '★★★★★',
     Duration: duration,
     Link: clean(document.getElementById('submitLink').value)
   };
