@@ -1089,6 +1089,10 @@
       font-style: italic;
     }
 
+    .leaderboard-mobile-list {
+      display: none;
+    }
+
     @media (max-width: 680px) {
       body {
         background-attachment: scroll;
@@ -1201,86 +1205,109 @@
         margin-top: 4px;
       }
 
-      .table-container {
-        padding: 10px;
-        overflow-x: visible;
-      }
-
-      .table-container table,
-      .table-container thead,
-      .table-container tbody {
-        display: block;
-      }
-
-      .table-container thead {
+      .leaderboard-table {
         display: none;
       }
 
-      .table-container tr.tier-row {
+      .leaderboard-mobile-list {
         display: block;
-        border-left: 0;
-        margin-top: 12px;
       }
 
-      .table-container tr.tier-row td {
-        display: block;
-        padding: 10px 8px 6px 8px;
+      .leaderboard-mobile-tier {
+        margin: 12px 0 7px 0;
+        padding: 9px 10px;
+        color: #ffb347;
+        background: var(--tier-row-bg);
+        border-radius: 8px;
+        font-weight: 800;
       }
 
-      .table-container tr:not(.tier-row) {
+      .leaderboard-mobile-card {
         display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 8px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
         margin: 8px 0;
         padding: 10px;
         border-radius: 8px;
         background: var(--overlay-bg-light);
         border-top: 1px solid var(--border-subtle);
+        box-sizing: border-box;
       }
 
-      .table-container tr:not(.tier-row) td {
+      .leaderboard-mobile-card.row-jeremy {
+        border-left: 3px solid #4ea1ff;
+      }
+
+      .leaderboard-mobile-card.row-matt {
+        border-left: 3px solid #ffb347;
+      }
+
+      .leaderboard-mobile-monster {
         display: flex;
         align-items: center;
-        padding: 0;
-        width: auto;
-        white-space: normal;
-      }
-
-      .table-container tr:not(.tier-row) td:nth-child(1) {
         grid-column: 1 / -1;
+        gap: 8px;
         font-weight: 700;
-      }
-
-      .table-container tr:not(.tier-row) td:nth-child(2) {
-        justify-content: flex-start;
-      }
-
-      .table-container tr:not(.tier-row) td:nth-child(3) {
-        justify-content: flex-end;
-      }
-
-      .table-container tr:not(.tier-row) td:nth-child(4) {
-        grid-column: 1 / -1;
-        justify-content: flex-end;
-      }
-
-      .leaderboard-time-wrapper {
         min-width: 0;
+      }
+
+      .leaderboard-mobile-monster span {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .leaderboard-mobile-meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .leaderboard-mobile-weapon {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        min-width: 34px;
+      }
+
+      .leaderboard-mobile-time {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        font-family: var(--number-font);
+        font-weight: 800;
+        white-space: nowrap;
       }
 
       .weapon-grid,
       .rivalry-grid {
+        max-width: calc(100vw - 24px);
+        margin-left: auto;
+        margin-right: auto;
         padding: 10px;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
+        box-sizing: border-box;
       }
 
       .weapon-grid table {
-        min-width: 900px;
+        width: max-content;
+        min-width: 980px;
+        table-layout: auto;
       }
 
       .rivalry-grid table {
-        min-width: 680px;
+        width: max-content;
+        min-width: 620px;
+        table-layout: auto;
+      }
+
+      .weapon-grid th,
+      .weapon-grid td,
+      .rivalry-grid th,
+      .rivalry-grid td {
+        white-space: nowrap;
       }
 
       .monster-cell {
@@ -1940,25 +1967,33 @@ function renderLeaderboard(filtered, monsterStats) {
     return;
   }
 
-  let html = `<div class="table-container"><table><thead><tr>
+  let html = `<div class="table-container"><table class="leaderboard-table"><thead><tr>
     <th class="leaderboard-monster-col">Monster</th>
     <th class="leaderboard-player-col">Player</th>
     <th class="leaderboard-weapon-col">Weapon</th>
     <th class="leaderboard-time-col">Time</th>
   </tr></thead><tbody>`;
+  let mobileHtml = '<div class="leaderboard-mobile-list">';
 
   Object.keys(grouped).sort((a, b) => b.localeCompare(a)).forEach(tier => {
     html += `<tr class="tier-row"><td colspan="4">${tier}</td></tr>`;
+    mobileHtml += `<div class="leaderboard-mobile-tier">${escapeHtml(tier)}</div>`;
     grouped[tier].forEach(r => {
       const isJeremy = r.player.toLowerCase().includes('jeremy');
       const isTempered = r.monster.toLowerCase().includes('tempered');
+      const monsterIcon = monsterIcons[r.monster.toLowerCase()]
+        ? `<img src="${monsterIcons[r.monster.toLowerCase()]}" class="icon ${isTempered ? 'tempered-glow' : ''}">`
+        : '';
+      const weaponIcon = weaponIcons[r.weapon.toLowerCase()]
+        ? `<img src="${weaponIcons[r.weapon.toLowerCase()]}" class="icon" title="${escapeHtml(r.weapon)}">`
+        : '';
       const playBtn = r.link
         ? `<span onclick="openVideo('${r.link}')" class="time-link">${PLAY_BUTTON_HTML}</span>`
         : `<span class="play-button-spacer"></span>`;
       html += `<tr class="row-${isJeremy ? 'jeremy' : 'matt'}">
-        <td><div class="cell-flex">${monsterIcons[r.monster.toLowerCase()] ? `<img src="${monsterIcons[r.monster.toLowerCase()]}" class="icon ${isTempered ? 'tempered-glow' : ''}">` : ''}${r.monster}</div></td>
+        <td><div class="cell-flex">${monsterIcon}${r.monster}</div></td>
         <td class="player ${isJeremy ? 'jeremy' : 'matt'}">${r.player}</td>
-        <td class="leaderboard-weapon-cell"><div class="cell-flex">${weaponIcons[r.weapon.toLowerCase()] ? `<img src="${weaponIcons[r.weapon.toLowerCase()]}" class="icon" title="${r.weapon}">` : ''}</div></td>
+        <td class="leaderboard-weapon-cell"><div class="cell-flex">${weaponIcon}</div></td>
         <td class="leaderboard-time-col">
           <div class="leaderboard-time-wrapper">
             <span class="${isJeremy ? 'jeremy-time' : 'matt-time'} time-val">${formatTime(r.timeSecs)}</span>
@@ -1966,10 +2001,22 @@ function renderLeaderboard(filtered, monsterStats) {
           </div>
         </td>
       </tr>`;
+      mobileHtml += `<div class="leaderboard-mobile-card row-${isJeremy ? 'jeremy' : 'matt'}">
+        <div class="leaderboard-mobile-monster">${monsterIcon}<span>${escapeHtml(r.monster)}</span></div>
+        <div class="leaderboard-mobile-meta">
+          <span class="player ${isJeremy ? 'jeremy' : 'matt'}">${escapeHtml(r.player)}</span>
+          <span class="leaderboard-mobile-weapon">${weaponIcon}</span>
+        </div>
+        <div class="leaderboard-mobile-time ${isJeremy ? 'jeremy-time' : 'matt-time'}">
+          <span>${formatTime(r.timeSecs)}</span>
+          ${playBtn}
+        </div>
+      </div>`;
     });
   });
 
-  document.getElementById('mainContent').innerHTML = html + '</tbody></table></div>';
+  mobileHtml += '</div>';
+  document.getElementById('mainContent').innerHTML = html + `</tbody></table>${mobileHtml}</div>`;
 }
 
 function renderWeaponTimes(filtered, monsterStats) {
