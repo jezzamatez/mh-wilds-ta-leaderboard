@@ -1175,8 +1175,6 @@
     </form>
   </div>
 </div>
-<iframe id="submitRunFrame" name="submitRunFrame" style="display:none"></iframe>
-
 <script>
 const SHEET_ID = '1H6wf4FxwHntdQvsy5DSMXxaEpgLPeX7NQ7SQ51KaU04';
 const SHEET_BASE = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
@@ -1455,7 +1453,7 @@ function normalizeDuration(value) {
   return `${parseInt(match[1], 10)}:${match[2]}.${match[3]}`;
 }
 
-function submitRun(event) {
+async function submitRun(event) {
   event.preventDefault();
 
   if (!SUBMIT_RUN_ENDPOINT) {
@@ -1479,29 +1477,25 @@ function submitRun(event) {
     Link: clean(document.getElementById('submitLink').value)
   };
 
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = SUBMIT_RUN_ENDPOINT;
-  form.target = 'submitRunFrame';
-  form.style.display = 'none';
-
+  const formData = new URLSearchParams();
   Object.entries(payload).forEach(([key, value]) => {
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = key;
-    input.value = value;
-    form.appendChild(input);
+    formData.set(key, value);
   });
 
   const button = document.getElementById('submitRunButton');
   button.disabled = true;
   setSubmitStatus('Submitting to Google Sheets...');
 
-  const frame = document.getElementById('submitRunFrame');
-  const cleanup = () => {
-    frame.removeEventListener('load', cleanup);
-    form.remove();
-    button.disabled = false;
+  try {
+    await fetch(SUBMIT_RUN_ENDPOINT, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+      },
+      body: formData
+    });
+
     setSubmitStatus('Sent. Refreshing sheet data...', 'success');
     document.getElementById('submitRunForm').reset();
     document.getElementById('submitRunType').value = currentRunFilter;
@@ -1509,11 +1503,11 @@ function submitRun(event) {
       closeSubmitRun();
       loadData();
     }, 1200);
-  };
-
-  frame.addEventListener('load', cleanup);
-  document.body.appendChild(form);
-  form.submit();
+  } catch (error) {
+    setSubmitStatus('Submit failed before reaching Google Sheets.', 'error');
+  } finally {
+    button.disabled = false;
+  }
 }
 
 async function loadIconMap() {
