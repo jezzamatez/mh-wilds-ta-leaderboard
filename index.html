@@ -1097,6 +1097,10 @@
       display: none;
     }
 
+    .rivalry-mobile-list {
+      display: none;
+    }
+
     @media (max-width: 680px) {
       body {
         background-attachment: scroll;
@@ -1228,7 +1232,7 @@
 
       .leaderboard-mobile-card {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-columns: minmax(0, 1fr);
         gap: 10px;
         margin: 8px 0;
         padding: 10px;
@@ -1260,8 +1264,9 @@
         overflow-wrap: anywhere;
       }
 
-      .leaderboard-mobile-meta {
-        display: flex;
+      .leaderboard-mobile-run {
+        display: grid;
+        grid-template-columns: minmax(58px, 1fr) 34px auto;
         align-items: center;
         gap: 10px;
         min-width: 0;
@@ -1354,7 +1359,7 @@
 
       .weapon-mobile-row {
         display: grid;
-        grid-template-columns: minmax(86px, 1fr) minmax(78px, auto) minmax(78px, auto);
+        grid-template-columns: 34px minmax(90px, 1fr) minmax(90px, 1fr);
         align-items: center;
         gap: 8px;
         padding: 8px 0;
@@ -1368,10 +1373,7 @@
       .weapon-mobile-name {
         display: flex;
         align-items: center;
-        gap: 7px;
-        min-width: 0;
-        color: var(--text-primary);
-        font-weight: 700;
+        justify-content: center;
       }
 
       .weapon-mobile-name img {
@@ -1395,6 +1397,95 @@
       .weapon-mobile-player .crown-icon {
         width: 15px;
         height: 15px;
+      }
+
+      .weapon-mobile-video-spacer {
+        width: 14px;
+        height: 10px;
+      }
+
+      .rivalry-grid .rivalry-desktop-table {
+        display: none;
+      }
+
+      .rivalry-mobile-list {
+        display: block;
+      }
+
+      .rivalry-mobile-tier {
+        margin: 12px 0 7px 0;
+        padding: 9px 10px;
+        color: #ffb347;
+        background: var(--tier-row-bg);
+        border-radius: 8px;
+        font-weight: 800;
+      }
+
+      .rivalry-mobile-card {
+        margin: 8px 0 14px 0;
+        padding: 11px;
+        border-radius: 8px;
+        background: var(--overlay-bg-light);
+        border-left: 3px solid #ffb347;
+      }
+
+      .rivalry-mobile-head {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 34px;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .rivalry-mobile-monster {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        font-weight: 800;
+      }
+
+      .rivalry-mobile-monster span {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .rivalry-mobile-weapon {
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .rivalry-mobile-weapon img {
+        width: 30px;
+        height: 30px;
+        object-fit: contain;
+      }
+
+      .rivalry-mobile-line {
+        display: grid;
+        grid-template-columns: 58px 1fr auto;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 0;
+        border-top: 1px solid var(--border-subtle);
+      }
+
+      .rivalry-mobile-label {
+        color: var(--text-secondary);
+        font-size: 0.78rem;
+        font-weight: 800;
+      }
+
+      .rivalry-mobile-value {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-family: var(--number-font);
+        font-weight: 800;
+      }
+
+      .rivalry-mobile-gap {
+        color: var(--text-muted);
       }
 
       .monster-cell {
@@ -2090,13 +2181,13 @@ function renderLeaderboard(filtered, monsterStats) {
       </tr>`;
       mobileHtml += `<div class="leaderboard-mobile-card row-${isJeremy ? 'jeremy' : 'matt'}">
         <div class="leaderboard-mobile-monster">${monsterIcon}<span>${escapeHtml(r.monster)}</span></div>
-        <div class="leaderboard-mobile-meta">
+        <div class="leaderboard-mobile-run">
           <span class="player ${isJeremy ? 'jeremy' : 'matt'}">${escapeHtml(r.player)}</span>
           <span class="leaderboard-mobile-weapon">${weaponIcon}</span>
-        </div>
-        <div class="leaderboard-mobile-time ${isJeremy ? 'jeremy-time' : 'matt-time'}">
-          <span>${formatTime(r.timeSecs)}</span>
-          ${playBtn}
+          <span class="leaderboard-mobile-time ${isJeremy ? 'jeremy-time' : 'matt-time'}">
+            <span>${formatTime(r.timeSecs)}</span>
+            ${playBtn}
+          </span>
         </div>
       </div>`;
     });
@@ -2181,10 +2272,16 @@ function renderWeaponTimes(filtered, monsterStats) {
         const weaponIcon = weaponIcons[wKey] ? `<img src="${weaponIcons[wKey]}" title="${escapeHtml(w)}">` : '';
         const jCrown = jWins ? `<img src="${GOLD_CROWN}" class="crown-icon gold-crown">` : '';
         const mCrown = mWins ? `<img src="${GOLD_CROWN}" class="crown-icon gold-crown">` : '';
+        const jVideo = jRun && jRun.link
+          ? `<span onclick="openVideo('${jRun.link}')" class="time-link">${PLAY_BUTTON_HTML}</span>`
+          : '<span class="weapon-mobile-video-spacer"></span>';
+        const mVideo = mRun && mRun.link
+          ? `<span onclick="openVideo('${mRun.link}')" class="time-link">${PLAY_BUTTON_HTML}</span>`
+          : '<span class="weapon-mobile-video-spacer"></span>';
         mobileRows += `<div class="weapon-mobile-row">
-          <div class="weapon-mobile-name">${weaponIcon}<span>${escapeHtml(w)}</span></div>
-          <div class="weapon-mobile-player jeremy-time"><span>J ${jRun ? formatTime(jRun.timeSecs) : '-'}</span>${jCrown}</div>
-          <div class="weapon-mobile-player matt-time"><span>M ${mRun ? formatTime(mRun.timeSecs) : '-'}</span>${mCrown}</div>
+          <div class="weapon-mobile-name">${weaponIcon}</div>
+          <div class="weapon-mobile-player jeremy-time"><span>J ${jRun ? formatTime(jRun.timeSecs) : '-'}</span>${jCrown}${jVideo}</div>
+          <div class="weapon-mobile-player matt-time"><span>M ${mRun ? formatTime(mRun.timeSecs) : '-'}</span>${mCrown}${mVideo}</div>
         </div>`;
       });
 
@@ -2248,16 +2345,18 @@ function renderRivalry(filtered) {
     return;
   }
 
-  let html = `<div class="rivalry-grid"><table><thead><tr>
+  let html = `<div class="rivalry-grid"><table class="rivalry-desktop-table"><thead><tr>
     <th style="min-width:160px">Monster</th>
     <th>Weapon</th>
     <th style="text-align:center">Jeremy</th>
     <th style="text-align:center;width:100px">Gap</th>
     <th style="text-align:center">Matt</th>
   </tr></thead><tbody>`;
+  let mobileHtml = '<div class="rivalry-mobile-list">';
 
   Object.keys(groupedByTier).sort((a, b) => b.localeCompare(a)).forEach(tier => {
     html += `<tr class="tier-row"><td colspan="5">${tier}</td></tr>`;
+    mobileHtml += `<div class="rivalry-mobile-tier">${escapeHtml(tier)}</div>`;
 
     const monsterGroups = {};
     groupedByTier[tier].forEach(c => {
@@ -2300,6 +2399,34 @@ function renderRivalry(filtered) {
           ? `<span onclick="openVideo('${c.matt.link}')" class="time-link">${PLAY_BUTTON_HTML}</span>`
           : `<span class="play-button-spacer"></span>`;
 
+        const jMobileCrown = jWins
+          ? `<img src="${GOLD_CROWN}" class="crown-icon gold-crown">`
+          : '';
+        const mMobileCrown = !jWins
+          ? `<img src="${GOLD_CROWN}" class="crown-icon gold-crown">`
+          : '';
+        mobileHtml += `<div class="rivalry-mobile-card">
+          <div class="rivalry-mobile-head">
+            <div class="rivalry-mobile-monster">${monsterImg}<span>${escapeHtml(c.jeremy.monster)}</span></div>
+            <div class="rivalry-mobile-weapon">${weaponImg}</div>
+          </div>
+          <div class="rivalry-mobile-line">
+            <span class="rivalry-mobile-label">Jeremy</span>
+            <span class="rivalry-mobile-value jeremy-time">${formatTime(jTime)}${jMobileCrown}</span>
+            ${jPlayBtn}
+          </div>
+          <div class="rivalry-mobile-line">
+            <span class="rivalry-mobile-label">Matt</span>
+            <span class="rivalry-mobile-value matt-time">${formatTime(mTime)}${mMobileCrown}</span>
+            ${mPlayBtn}
+          </div>
+          <div class="rivalry-mobile-line">
+            <span class="rivalry-mobile-label">Gap</span>
+            <span class="rivalry-mobile-value rivalry-mobile-gap">${formatTime(gap)}</span>
+            ${isClose ? '<span class="rivalry-close-text">CLOSE</span>' : '<span></span>'}
+          </div>
+        </div>`;
+
         html += `<tr class="row-${jWins ? 'jeremy' : 'matt'}" data-rivalry-monster="${escapeHtml(mKey)}">`;
 
         if (index === 0) {
@@ -2341,7 +2468,8 @@ function renderRivalry(filtered) {
     });
   });
 
-  document.getElementById('mainContent').innerHTML = html + '</tbody></table></div>';
+  mobileHtml += '</div>';
+  document.getElementById('mainContent').innerHTML = html + `</tbody></table>${mobileHtml}</div>`;
 }
 
 initTheme();
