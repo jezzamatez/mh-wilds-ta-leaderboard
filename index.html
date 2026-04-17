@@ -367,6 +367,199 @@
       transform: translateY(0);
     }
 
+    .submit-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1100;
+      background: rgba(0, 0, 0, 0.72);
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      box-sizing: border-box;
+    }
+
+    .submit-modal.open {
+      display: flex;
+    }
+
+    .submit-dialog {
+      width: min(520px, 100%);
+      background: var(--overlay-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: 0 18px 46px rgba(0, 0, 0, 0.42);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 18px;
+      box-sizing: border-box;
+    }
+
+    .submit-dialog-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .submit-dialog-title {
+      color: #ffb347;
+      font-size: 1.12rem;
+      font-weight: 800;
+    }
+
+    :root[data-theme="light"] .submit-dialog-title {
+      color: #a85f07;
+    }
+
+    .submit-close-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--overlay-bg-light);
+      color: var(--text-primary);
+      cursor: pointer;
+      font-size: 1.3rem;
+      line-height: 1;
+    }
+
+    .submit-run-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .submit-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .submit-field.full {
+      grid-column: 1 / -1;
+    }
+
+    .submit-combobox {
+      position: relative;
+    }
+
+    .submit-field label {
+      color: var(--text-secondary);
+      font-size: 0.76rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .submit-input {
+      width: 100%;
+      min-height: 42px;
+      padding: 10px 12px;
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 0.92rem;
+      font-family: var(--page-font);
+      box-sizing: border-box;
+      outline: none;
+    }
+
+    .submit-input:focus,
+    .submit-input:hover {
+      border-color: #ffb347;
+    }
+
+    .submit-combobox-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      z-index: 1200;
+      max-height: 210px;
+      overflow-y: auto;
+      background: var(--overlay-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.36);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .submit-combobox.open .submit-combobox-menu {
+      display: block;
+    }
+
+    .submit-combobox-option {
+      padding: 10px 12px;
+      color: var(--text-primary);
+      cursor: pointer;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .submit-combobox-option:first-child {
+      border-top: 0;
+    }
+
+    .submit-combobox-option:hover,
+    .submit-combobox-option.active {
+      background: var(--overlay-bg-mid);
+      color: #ffb347;
+    }
+
+    .submit-combobox-empty {
+      padding: 10px 12px;
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+
+    .submit-actions {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .submit-status {
+      flex: 1;
+      min-height: 20px;
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+    }
+
+    .submit-status.error {
+      color: #ff6b7d;
+    }
+
+    .submit-status.success {
+      color: #7ee787;
+    }
+
+    .submit-action-btn {
+      min-height: 40px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      padding: 0 16px;
+      background: var(--overlay-bg-light);
+      color: var(--text-primary);
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .submit-action-btn.primary {
+      border-color: #ffb347;
+      background: linear-gradient(135deg, rgba(255, 179, 71, 0.3), rgba(78, 161, 255, 0.16));
+    }
+
+    .submit-action-btn:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
     .scoreboard {
       display: flex;
       justify-content: center;
@@ -922,6 +1115,10 @@
         min-width: 100%;
       }
 
+      .submit-run-form {
+        grid-template-columns: 1fr;
+      }
+
       .scoreboard {
         flex-direction: column;
         gap: 10px;
@@ -956,7 +1153,7 @@
       <button class="recent-runs-toggle" type="button" onclick="toggleRecentRuns(event)">Recent Runs</button>
       <div class="recent-runs-menu" id="recentRunsMenu"></div>
     </div>
-    <button class="submit-run-btn" type="button" onclick="alert('Submit Run is a placeholder for now.')">Submit Run</button>
+    <button class="submit-run-btn" type="button" onclick="openSubmitRun()">Submit Run</button>
   </div>
 </div>
 
@@ -981,12 +1178,64 @@
   </div>
 </div>
 
+<div id="submitRunModal" class="submit-modal" onclick="closeSubmitRun()">
+  <div class="submit-dialog" onclick="event.stopPropagation()">
+    <div class="submit-dialog-header">
+      <div class="submit-dialog-title">Submit Run</div>
+      <button class="submit-close-btn" type="button" onclick="closeSubmitRun()" title="Close">&times;</button>
+    </div>
+    <form id="submitRunForm" class="submit-run-form" onsubmit="submitRun(event)">
+      <div class="submit-field">
+        <label for="submitPlayer">Player</label>
+        <select id="submitPlayer" class="submit-input" required>
+          <option value="Jeremy">Jeremy</option>
+          <option value="Matt">Matt</option>
+        </select>
+      </div>
+      <div class="submit-field">
+        <label for="submitRunType">Rules</label>
+        <select id="submitRunType" class="submit-input" required>
+          <option value="TA">TA Rules</option>
+          <option value="Freestyle">Freestyle</option>
+        </select>
+      </div>
+      <div class="submit-field full">
+        <label for="submitMonster">Monster</label>
+        <div class="submit-combobox" id="submitMonsterBox">
+          <input id="submitMonster" class="submit-input" type="text" autocomplete="off" required oninput="renderSubmitPicker('monster')" onfocus="openSubmitPicker('monster')">
+          <div class="submit-combobox-menu" id="submitMonsterMenu"></div>
+        </div>
+      </div>
+      <div class="submit-field">
+        <label for="submitWeapon">Weapon</label>
+        <div class="submit-combobox" id="submitWeaponBox">
+          <input id="submitWeapon" class="submit-input" type="text" autocomplete="off" required oninput="renderSubmitPicker('weapon')" onfocus="openSubmitPicker('weapon')">
+          <div class="submit-combobox-menu" id="submitWeaponMenu"></div>
+        </div>
+      </div>
+      <div class="submit-field">
+        <label for="submitDuration">Duration</label>
+        <input id="submitDuration" class="submit-input" type="text" inputmode="decimal" placeholder="0:00.00" pattern="^[0-9]+:[0-5][0-9]\.[0-9]{2}$" title="Use minutes:seconds.centiseconds, like 4:32.10" required>
+      </div>
+      <div class="submit-field full">
+        <label for="submitLink">Video Link</label>
+        <input id="submitLink" class="submit-input" type="url" placeholder="https://youtu.be/...">
+      </div>
+      <div class="submit-actions">
+        <div id="submitRunStatus" class="submit-status"></div>
+        <button class="submit-action-btn" type="button" onclick="closeSubmitRun()">Cancel</button>
+        <button id="submitRunButton" class="submit-action-btn primary" type="submit">Submit</button>
+      </div>
+    </form>
+  </div>
+</div>
 <script>
 const SHEET_ID = '1H6wf4FxwHntdQvsy5DSMXxaEpgLPeX7NQ7SQ51KaU04';
 const SHEET_BASE = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
 const GID_RUNS = '0';
 const GID_MONSTERS = '73280311';
 const GID_WEAPONS = '2020437619';
+const SUBMIT_RUN_ENDPOINT = 'https://script.google.com/macros/s/AKfycbws8Ia_eSpxe7KsAhGF6wmRSkkM6vqy2oy8JYiyfAOx-MMqLgZ6miybhILnXmUiHlrDVQ/exec';
 const ICON_MAP_URL = 'assets/cache/icon-map.json';
 
 const GOLD_CROWN = 'https://www.phantombrawlers.com/static/mhwilds/Icons/King%20Crown.png';
@@ -994,6 +1243,7 @@ const SILVER_CROWN = 'https://www.phantombrawlers.com/static/mhwilds/Icons/Big%2
 const PLAY_BUTTON_HTML = `<div class="play-svg-container"><svg class="play-svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>`;
 
 let allRunsRaw = [];
+let monsterNames = [];
 let monsterIcons = {};
 let monsterTiers = {};
 let weaponIcons = {};
@@ -1092,6 +1342,7 @@ function toggleRecentRuns(event) {
 document.addEventListener('click', event => {
   const dropdown = document.getElementById('recentRunsDropdown');
   if (dropdown && !dropdown.contains(event.target)) dropdown.classList.remove('open');
+  if (!event.target.closest('.submit-combobox')) closeSubmitPickers();
 });
 
 document.addEventListener('mouseover', event => {
@@ -1217,6 +1468,175 @@ function closeVideo() {
   document.getElementById('videoFrame').src = '';
 }
 
+function setSubmitStatus(message, type = '') {
+  const status = document.getElementById('submitRunStatus');
+  if (!status) return;
+  status.textContent = message;
+  status.className = `submit-status ${type}`.trim();
+}
+
+function submitPickerConfig(type) {
+  return type === 'weapon'
+    ? {
+        inputId: 'submitWeapon',
+        boxId: 'submitWeaponBox',
+        menuId: 'submitWeaponMenu',
+        values: weaponOrder
+      }
+    : {
+        inputId: 'submitMonster',
+        boxId: 'submitMonsterBox',
+        menuId: 'submitMonsterMenu',
+        values: monsterNames
+      };
+}
+
+function renderSubmitPicker(type) {
+  const config = submitPickerConfig(type);
+  const input = document.getElementById(config.inputId);
+  const menu = document.getElementById(config.menuId);
+  if (!input || !menu) return;
+
+  const query = clean(input.value).toLowerCase();
+  const matches = config.values
+    .filter(Boolean)
+    .filter(value => value.toLowerCase().includes(query))
+    .slice(0, 12);
+
+  if (matches.length === 0) {
+    menu.innerHTML = '<div class="submit-combobox-empty">No matches</div>';
+    return;
+  }
+
+  menu.innerHTML = matches
+    .map(value => `<div class="submit-combobox-option" data-picker-value="${escapeHtml(value)}" onclick="chooseSubmitPickerFromOption('${type}', this)">${escapeHtml(value)}</div>`)
+    .join('');
+}
+
+function openSubmitPicker(type) {
+  const config = submitPickerConfig(type);
+  const box = document.getElementById(config.boxId);
+  if (!box) return;
+  closeSubmitPickers(type);
+  renderSubmitPicker(type);
+  box.classList.add('open');
+}
+
+function closeSubmitPickers(exceptType = '') {
+  ['monster', 'weapon'].forEach(type => {
+    if (type === exceptType) return;
+    const box = document.getElementById(submitPickerConfig(type).boxId);
+    if (box) box.classList.remove('open');
+  });
+}
+
+function chooseSubmitPicker(type, value) {
+  const config = submitPickerConfig(type);
+  const input = document.getElementById(config.inputId);
+  const box = document.getElementById(config.boxId);
+  if (input) input.value = value;
+  if (box) box.classList.remove('open');
+}
+
+function chooseSubmitPickerFromOption(type, option) {
+  chooseSubmitPicker(type, option.dataset.pickerValue || '');
+}
+
+function populateSubmitForm() {
+  document.getElementById('submitMonster').value = '';
+  document.getElementById('submitWeapon').value = '';
+  renderSubmitPicker('monster');
+  renderSubmitPicker('weapon');
+  document.getElementById('submitRunType').value = currentRunFilter;
+}
+
+function openSubmitRun() {
+  populateSubmitForm();
+  setSubmitStatus('');
+  document.getElementById('submitRunModal').classList.add('open');
+  document.getElementById('submitDuration').focus();
+}
+
+function closeSubmitRun() {
+  document.getElementById('submitRunModal').classList.remove('open');
+}
+
+function normalizeDuration(value) {
+  const trimmed = clean(value);
+  const match = trimmed.match(/^([0-9]+):([0-5][0-9])\.([0-9]{2})$/);
+  if (!match) return null;
+  return `${parseInt(match[1], 10)}:${match[2]}.${match[3]}`;
+}
+
+async function submitRun(event) {
+  event.preventDefault();
+
+  if (!SUBMIT_RUN_ENDPOINT) {
+    setSubmitStatus('Submission endpoint is not configured yet.', 'error');
+    return;
+  }
+
+  const duration = normalizeDuration(document.getElementById('submitDuration').value);
+  if (!duration || parseTime(duration) === null) {
+    setSubmitStatus('Use a valid time like 4:32.10.', 'error');
+    return;
+  }
+
+  const monster = clean(document.getElementById('submitMonster').value);
+  if (!monsterNames.some(name => name.toLowerCase() === monster.toLowerCase())) {
+    setSubmitStatus('Choose a monster from the list.', 'error');
+    return;
+  }
+
+  const weapon = clean(document.getElementById('submitWeapon').value);
+  if (!weaponOrder.some(name => name.toLowerCase() === weapon.toLowerCase())) {
+    setSubmitStatus('Choose a weapon from the list.', 'error');
+    return;
+  }
+
+  const payload = {
+    Player: clean(document.getElementById('submitPlayer').value),
+    RunType: clean(document.getElementById('submitRunType').value),
+    Monster: monster,
+    Weapon: weapon,
+    Difficulty: '★★★★★',
+    Duration: duration,
+    Link: clean(document.getElementById('submitLink').value)
+  };
+
+  const formData = new URLSearchParams();
+  Object.entries(payload).forEach(([key, value]) => {
+    formData.set(key, value);
+  });
+
+  const button = document.getElementById('submitRunButton');
+  button.disabled = true;
+  setSubmitStatus('Submitting to Google Sheets...');
+
+  try {
+    await fetch(SUBMIT_RUN_ENDPOINT, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+      },
+      body: formData
+    });
+
+    setSubmitStatus('Sent. Refreshing sheet data...', 'success');
+    document.getElementById('submitRunForm').reset();
+    document.getElementById('submitRunType').value = currentRunFilter;
+    setTimeout(() => {
+      closeSubmitRun();
+      loadData();
+    }, 1200);
+  } catch (error) {
+    setSubmitStatus('Submit failed before reaching Google Sheets.', 'error');
+  } finally {
+    button.disabled = false;
+  }
+}
+
 async function loadIconMap() {
   try {
     const res = await fetch(`${ICON_MAP_URL}?t=${Date.now()}`);
@@ -1246,10 +1666,13 @@ async function loadData() {
     const mRows = parseCSV(mRes);
     const wRows = parseCSV(wRes);
 
+    monsterNames = [];
     monsterIcons = {};
     monsterTiers = {};
     mRows.slice(1).forEach(r => {
-      const name = clean(r[1]).toLowerCase();
+      const rawName = clean(r[1]);
+      const name = rawName.toLowerCase();
+      if (rawName) monsterNames.push(rawName);
       monsterTiers[name] = clean(r[0]);
       monsterIcons[name] = resolveIconUrl(clean(r[3]));
     });
