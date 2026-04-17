@@ -163,8 +163,8 @@
 
     .filter-select {
       cursor: pointer;
-      flex: 0 1 155px;
-      min-width: 150px;
+      flex: 0 0 190px;
+      min-width: 190px;
       background-image: linear-gradient(var(--overlay-bg-light), var(--overlay-bg-light)), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237f8ca3'/%3E%3C/svg%3E");
       background-repeat: no-repeat, no-repeat;
       background-position: 0 0, right 12px center;
@@ -210,6 +210,8 @@
     .tabs { display: flex; justify-content: center; gap: 10px; margin: 12px auto; max-width: var(--panel-width); width: 95%; padding: 5px; }
     .tab { flex: 1; padding: 12px; text-align: center; background: var(--overlay-bg-light); border-radius: 8px; cursor: pointer; }
     .tab.active { color: #ffb347; font-weight: bold; background: var(--overlay-bg-mid); }
+    .tab-icon-crown { width: 21px; height: 21px; vertical-align: middle; margin-right: 5px; }
+    .tab-icon-stopwatch { display: inline-block; font-size: 1.2em; line-height: 1; vertical-align: -0.08em; margin-right: 5px; }
 
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .table-container { max-width: var(--panel-width); margin: auto; padding: 15px; width: 95%; overflow-x: auto; }
@@ -276,7 +278,7 @@
     .rivalry-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; }
     .rivalry-time-row { display: flex; align-items: center; justify-content: center; height: 22px; gap: 6px; }
     .rivalry-time-fixed { font-family: var(--number-font); font-size: 1rem; font-weight: bold; display: inline-block; min-width: 72px; text-align: right; }
-    .rivalry-icon-row { display: flex; align-items: center; justify-content: center; height: 16px; gap: 4px; min-width: 22px; }
+    .rivalry-icon-row { display: flex; align-items: center; justify-content: flex-start; height: 16px; gap: 4px; min-width: 22px; width: 100%; padding-left: 30px; box-sizing: border-box; }
     .rivalry-gap-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; }
     .rivalry-gap-time-row { display: flex; align-items: center; justify-content: center; height: 22px; }
     .rivalry-gap-time-fixed { font-family: var(--number-font); font-size: 1rem; font-weight: bold; color: var(--text-muted); display: inline-block; min-width: 72px; text-align: center; }
@@ -333,7 +335,7 @@
       <option value="Freestyle">Freestyle</option>
     </select>
     <select class="filter-select" id="typeFilterSelect" onchange="setTypeFilter(this.value)">
-      <option value="all">All Types</option>
+      <option value="all">All Monster Types</option>
       <option value="regular">Regular</option>
       <option value="tempered">Tempered</option>
       <option value="frenzied">Frenzied</option>
@@ -350,8 +352,8 @@
 </div>
 
 <div class="tabs">
-  <div class="tab active" onclick="switchTab('leaderboard', this)"><img src="https://www.phantombrawlers.com/static/mhwilds/Icons/King%20Crown.png" style="width:16px;height:16px;vertical-align:middle;margin-right:5px">Leaderboard</div>
-  <div class="tab" onclick="switchTab('weapons', this)">⏱️ Weapon Times</div>
+  <div class="tab active" onclick="switchTab('leaderboard', this)"><img src="https://www.phantombrawlers.com/static/mhwilds/Icons/King%20Crown.png" class="tab-icon-crown">Leaderboard</div>
+  <div class="tab" onclick="switchTab('weapons', this)"><span class="tab-icon-stopwatch">⏱️</span>Weapon Times</div>
   <div class="tab" onclick="switchTab('rivalry', this)">⚔️ Rivalry</div>
 </div>
 
@@ -620,6 +622,12 @@ function renderLeaderboard(filtered, monsterStats) {
 }
 
 function renderWeaponTimes(filtered, monsterStats) {
+  const bestOfEach = Object.values(monsterStats).map(list => list[0]);
+  let jW = 0, mW = 0;
+  bestOfEach.forEach(r => { if (r.player.toLowerCase().includes('jeremy')) jW++; else mW++; });
+  document.getElementById('jeremyCount').textContent = jW;
+  document.getElementById('mattCount').textContent   = mW;
+
   const monsters = [...new Set(filtered.map(r => r.monster))];
   const groupedByTier = {};
   monsters.forEach(m => {
