@@ -1172,21 +1172,46 @@
         border-radius: 6px;
         color: var(--text-secondary);
         font-size: 0.74rem;
-        font-weight: 800;
+        font-weight: 600;
         line-height: 1;
       }
 
       .mobile-filter-segment strong {
         color: var(--text-primary);
         font-size: 0.78rem;
+        font-weight: 600;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
 
-      .filter-shell.filters-open .mobile-filter-segment {
-        color: #ffb347;
-        background: var(--overlay-bg-mid);
+      .filter-shell.filters-open .mobile-filter-toggle {
+        display: none;
+      }
+
+      .mobile-filter-collapse {
+        display: none;
+      }
+
+      .filter-shell.filters-open .mobile-filter-collapse {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        min-height: 28px;
+        background: var(--overlay-bg-light);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-secondary);
+        cursor: pointer;
+      }
+
+      .mobile-filter-collapse::before {
+        content: "";
+        width: 10px;
+        height: 6px;
+        background: #7f8ca3;
+        clip-path: polygon(50% 0, 100% 100%, 0 100%);
       }
 
       .filter-bar {
@@ -1666,6 +1691,7 @@
     </div>
     <button class="submit-run-btn" type="button" onclick="openSubmitRun()">Submit Run</button>
   </div>
+  <button class="mobile-filter-collapse" type="button" onclick="toggleMobileFilters()" aria-label="Collapse filters"></button>
 </div>
 
 <div class="scoreboard">
