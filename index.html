@@ -1148,33 +1148,45 @@
       }
 
       .mobile-filter-toggle {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+        display: grid;
+        grid-template-columns: 0.8fr 1fr 0.8fr;
+        gap: 4px;
         width: 100%;
-        min-height: 38px;
-        padding: 8px 12px;
-        background: var(--overlay-bg-light);
-        border: 1px solid var(--border-color);
+        min-height: 36px;
+        padding: 4px;
+        background: rgba(8, 13, 23, 0.55);
+        border: 1px solid var(--border-subtle);
         border-radius: 8px;
         color: var(--text-primary);
-        font-size: 0.84rem;
-        font-weight: 800;
         font-family: var(--page-font);
         cursor: pointer;
       }
 
-      .mobile-filter-toggle::after {
-        content: "";
-        width: 10px;
-        height: 6px;
-        background: #7f8ca3;
-        clip-path: polygon(0 0, 100% 0, 50% 100%);
-        transition: transform 0.2s;
+      .mobile-filter-segment {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 0;
+        padding: 7px 6px;
+        background: var(--overlay-bg-light);
+        border-radius: 6px;
+        color: var(--text-secondary);
+        font-size: 0.74rem;
+        font-weight: 800;
+        line-height: 1;
       }
 
-      .filter-shell.filters-open .mobile-filter-toggle::after {
-        transform: rotate(180deg);
+      .mobile-filter-segment strong {
+        color: var(--text-primary);
+        font-size: 0.78rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .filter-shell.filters-open .mobile-filter-segment {
+        color: #ffb347;
+        background: var(--overlay-bg-mid);
       }
 
       .filter-bar {
@@ -1630,7 +1642,11 @@
 <div id="newRunBadge" onclick="dismissBadge()"></div>
 
 <div class="filter-shell" id="filterShell">
-  <button class="mobile-filter-toggle" type="button" onclick="toggleMobileFilters()">Filters</button>
+  <button class="mobile-filter-toggle" type="button" onclick="toggleMobileFilters()" aria-label="Toggle filters">
+    <span class="mobile-filter-segment"><strong id="mobileRunSummary">TA</strong></span>
+    <span class="mobile-filter-segment"><strong id="mobileTypeSummary">All Types</strong></span>
+    <span class="mobile-filter-segment"><strong id="mobileSearchSummary">Search</strong></span>
+  </button>
   <div class="filter-bar">
     <select class="filter-select" id="runFilterSelect" onchange="setRunFilter(this.value)">
       <option value="TA">TA Rules</option>
@@ -1643,7 +1659,7 @@
       <option value="frenzied">Frenzied</option>
       <option value="arch-tempered">Arch-Tempered</option>
     </select>
-    <input id="monsterSearch" type="text" placeholder="Search monster..." oninput="render()">
+    <input id="monsterSearch" type="text" placeholder="Search monster..." oninput="updateMobileFilterSummary(); render()">
     <div class="recent-runs-dropdown" id="recentRunsDropdown">
       <button class="recent-runs-toggle" type="button" onclick="toggleRecentRuns(event)">Recent Runs</button>
       <div class="recent-runs-menu" id="recentRunsMenu"></div>
@@ -1786,12 +1802,33 @@ function dismissBadge() {
 
 function setRunFilter(type) {
   currentRunFilter = type;
+  updateMobileFilterSummary();
   render();
 }
 
 function setTypeFilter(type) {
   currentTypeFilter = type;
+  updateMobileFilterSummary();
   render();
+}
+
+function updateMobileFilterSummary() {
+  const runSummary = document.getElementById('mobileRunSummary');
+  const typeSummary = document.getElementById('mobileTypeSummary');
+  const searchSummary = document.getElementById('mobileSearchSummary');
+  if (!runSummary || !typeSummary || !searchSummary) return;
+
+  const typeLabels = {
+    all: 'All Types',
+    regular: 'Regular',
+    tempered: 'Tempered',
+    frenzied: 'Frenzied',
+    'arch-tempered': 'Arch'
+  };
+  const query = document.getElementById('monsterSearch')?.value.trim();
+  runSummary.textContent = currentRunFilter;
+  typeSummary.textContent = typeLabels[currentTypeFilter] || 'All Types';
+  searchSummary.textContent = query ? 'Filtered' : 'Search';
 }
 
 function monsterMatchesTypeFilter(monsterName) {
@@ -2623,6 +2660,7 @@ function renderRivalry(filtered) {
 }
 
 initTheme();
+updateMobileFilterSummary();
 loadData();
 setInterval(loadData, 120000);
 </script>
