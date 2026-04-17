@@ -1093,6 +1093,10 @@
       display: none;
     }
 
+    .weapon-mobile-list {
+      display: none;
+    }
+
     @media (max-width: 680px) {
       body {
         background-attachment: scroll;
@@ -1308,6 +1312,89 @@
       .rivalry-grid th,
       .rivalry-grid td {
         white-space: nowrap;
+      }
+
+      .weapon-grid .weapon-desktop-table {
+        display: none;
+      }
+
+      .weapon-mobile-list {
+        display: block;
+      }
+
+      .weapon-mobile-tier {
+        margin: 12px 0 7px 0;
+        padding: 9px 10px;
+        color: #ffb347;
+        background: var(--tier-row-bg);
+        border-radius: 8px;
+        font-weight: 800;
+      }
+
+      .weapon-mobile-card {
+        margin: 8px 0 14px 0;
+        padding: 11px;
+        border-radius: 8px;
+        background: var(--overlay-bg-light);
+        border-left: 3px solid #ffb347;
+      }
+
+      .weapon-mobile-monster {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 800;
+        margin-bottom: 10px;
+      }
+
+      .weapon-mobile-monster span {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .weapon-mobile-row {
+        display: grid;
+        grid-template-columns: minmax(86px, 1fr) minmax(78px, auto) minmax(78px, auto);
+        align-items: center;
+        gap: 8px;
+        padding: 8px 0;
+        border-top: 1px solid var(--border-subtle);
+      }
+
+      .weapon-mobile-row:first-of-type {
+        border-top: 0;
+      }
+
+      .weapon-mobile-name {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        min-width: 0;
+        color: var(--text-primary);
+        font-weight: 700;
+      }
+
+      .weapon-mobile-name img {
+        width: 24px;
+        height: 24px;
+        object-fit: contain;
+        flex-shrink: 0;
+      }
+
+      .weapon-mobile-player {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 4px;
+        font-family: var(--number-font);
+        font-size: 0.78rem;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .weapon-mobile-player .crown-icon {
+        width: 15px;
+        height: 15px;
       }
 
       .monster-cell {
@@ -2043,12 +2130,13 @@ function renderWeaponTimes(filtered, monsterStats) {
     return;
   }
 
-  let html = `<div class="weapon-grid"><table><thead><tr><th style="width:180px">Monster</th><th style="width:60px"></th>`;
+  let html = `<div class="weapon-grid"><table class="weapon-desktop-table"><thead><tr><th style="width:180px">Monster</th><th style="width:60px"></th>`;
   weaponOrder.forEach(w => {
     const icon = weaponIcons[w.toLowerCase()];
     html += `<th class="weapon-header-cell">${icon ? `<img src="${icon}" title="${w}">` : w}</th>`;
   });
   html += '</tr></thead><tbody>';
+  let mobileHtml = '<div class="weapon-mobile-list">';
 
   const lookup = {};
   filtered.forEach(r => {
@@ -2073,9 +2161,40 @@ function renderWeaponTimes(filtered, monsterStats) {
 
   Object.keys(groupedByTier).sort((a, b) => b.localeCompare(a)).forEach(tier => {
     html += `<tr class="tier-row"><td colspan="${weaponOrder.length + 2}">${tier}</td></tr>`;
+    mobileHtml += `<div class="weapon-mobile-tier">${escapeHtml(tier)}</div>`;
     groupedByTier[tier].forEach(m => {
       const mKey = m.toLowerCase();
       const isTempered = mKey.includes('tempered');
+      const monsterIcon = monsterIcons[mKey]
+        ? `<img src="${monsterIcons[mKey]}" class="icon ${isTempered ? 'tempered-glow' : ''}">`
+        : '';
+
+      let mobileRows = '';
+      weaponOrder.forEach(w => {
+        const wKey = w.toLowerCase();
+        const jRun = filtered.find(r => r.player.toLowerCase().includes('jeremy') && r.monster.toLowerCase() === mKey && r.weapon.toLowerCase() === wKey);
+        const mRun = filtered.find(r => !r.player.toLowerCase().includes('jeremy') && r.monster.toLowerCase() === mKey && r.weapon.toLowerCase() === wKey);
+        if (!jRun && !mRun) return;
+
+        const jWins = jRun && (!mRun || jRun.timeSecs < mRun.timeSecs);
+        const mWins = mRun && (!jRun || mRun.timeSecs < jRun.timeSecs);
+        const weaponIcon = weaponIcons[wKey] ? `<img src="${weaponIcons[wKey]}" title="${escapeHtml(w)}">` : '';
+        const jCrown = jWins ? `<img src="${GOLD_CROWN}" class="crown-icon gold-crown">` : '';
+        const mCrown = mWins ? `<img src="${GOLD_CROWN}" class="crown-icon gold-crown">` : '';
+        mobileRows += `<div class="weapon-mobile-row">
+          <div class="weapon-mobile-name">${weaponIcon}<span>${escapeHtml(w)}</span></div>
+          <div class="weapon-mobile-player jeremy-time"><span>J ${jRun ? formatTime(jRun.timeSecs) : '-'}</span>${jCrown}</div>
+          <div class="weapon-mobile-player matt-time"><span>M ${mRun ? formatTime(mRun.timeSecs) : '-'}</span>${mCrown}</div>
+        </div>`;
+      });
+
+      if (mobileRows) {
+        mobileHtml += `<div class="weapon-mobile-card">
+          <div class="weapon-mobile-monster">${monsterIcon}<span>${escapeHtml(m)}</span></div>
+          ${mobileRows}
+        </div>`;
+      }
+
       ['jeremy', 'matt'].forEach(p => {
         html += `<tr class="row-${p}">
           ${p === 'jeremy' ? `<td rowspan="2" class="monster-cell"><div class="cell-flex">${monsterIcons[mKey] ? `<img src="${monsterIcons[mKey]}" class="icon ${isTempered ? 'tempered-glow' : ''}">` : ''}${m}</div></td>` : ''}
@@ -2089,7 +2208,8 @@ function renderWeaponTimes(filtered, monsterStats) {
     });
   });
 
-  document.getElementById('mainContent').innerHTML = html + '</tbody></table></div>';
+  mobileHtml += '</div>';
+  document.getElementById('mainContent').innerHTML = html + `</tbody></table>${mobileHtml}</div>`;
 }
 
 function renderRivalry(filtered) {
